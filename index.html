@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MINERVA LAB | 案件判定ツール #31</title>
+<title>MINERVA LAB | 案件判定ツール #33</title>
 
 <style>
 
@@ -491,7 +491,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator #31 | クライアント回答・再判定ロジック強化版
+Project Evaluator #33 | 回答認識・表現揺れ強化版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -2007,21 +2007,43 @@ function evaluateProject(){
     warnings.push("1件ごとの納期が短めです。同時進行件数と修正対応を含めたスケジュール確認を推奨します。");
   }
 
+  /* =========================
+     #33 回答認識・表現揺れ強化
+     ・「修正は2回まで」「2回まで対応」等を修正条件として認識
+     ・「ポートフォリオへの掲載可能」「実績公開OK」等を権利条件として認識
+  ========================= */
+  const revisionNormalized=
+    text.replace(/\\s+/g,"");
+
   const hasRevision=
     contains(text,[
       "修正回数",
       "修正1回",
       "修正2回",
       "修正3回",
-      "修正無制限"
-    ]);
+      "修正無制限",
+      "追加修正",
+      "修正対応"
+    ]) ||
+    /修正(?:は|：|:)?(?:\\d+|一|二|三)回(?:まで|以内|程度|対応可|対応可能)?/i.test(revisionNormalized) ||
+    /(?:\\d+|一|二|三)回(?:まで|以内)(?:の)?修正/i.test(revisionNormalized) ||
+    /修正[^。\\n]{0,20}(?:無料|有料|別料金|追加料金|回数制限|無制限)/i.test(revisionNormalized);
+
+  const rightsNormalized=
+    text.replace(/\\s+/g,"");
 
   const hasRights=
     contains(text,[
       "著作権",
       "権利譲渡",
-      "ポートフォリオ掲載"
-    ]);
+      "著作権譲渡",
+      "ポートフォリオ掲載",
+      "実績掲載",
+      "実績公開"
+    ]) ||
+    /ポートフォリオ(?:へ|への|に|で)?(?:の)?掲載(?:は|が|を)?(?:可能|可|OK|可です|可能です|不可|NG)?/i.test(rightsNormalized) ||
+    /(?:掲載|公開)(?:は|が|を)?(?:可能|可|OK|不可|NG)[^。\\n]{0,20}(?:ポートフォリオ|実績)/i.test(rightsNormalized) ||
+    /(?:ポートフォリオ|実績)[^。\\n]{0,20}(?:掲載|公開)(?:可能|可|OK|不可|NG)/i.test(rightsNormalized);
 
   const hasAiRule=
     aiPolicy==="allowed" ||
