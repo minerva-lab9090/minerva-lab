@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>MINERVA LAB | 案件判定ツール #03</title>
+<title>MINERVA LAB | 案件判定ツール #04</title>
 
 <style>
 body {
@@ -16,7 +15,7 @@ body {
 }
 
 .container {
-  max-width: 880px;
+  max-width: 920px;
   margin: auto;
   background: #fff;
   padding: 34px;
@@ -24,9 +23,7 @@ body {
   box-shadow: 0 8px 30px rgba(0,0,0,.08);
 }
 
-h1 {
-  margin: 0 0 5px;
-}
+h1 { margin-bottom: 4px; }
 
 .subtitle {
   color: #777;
@@ -35,14 +32,13 @@ h1 {
 
 textarea {
   width: 100%;
-  min-height: 260px;
+  min-height: 280px;
   padding: 16px;
   box-sizing: border-box;
   border: 1px solid #ccc;
   border-radius: 12px;
   font-size: 15px;
   line-height: 1.6;
-  resize: vertical;
 }
 
 button {
@@ -52,104 +48,66 @@ button {
   border: 0;
   border-radius: 11px;
   background: #222;
-  color: #fff;
+  color: white;
   font-size: 17px;
   font-weight: bold;
   cursor: pointer;
 }
 
-button:hover {
-  opacity: .88;
-}
-
-.result {
-  display: none;
-  margin-top: 28px;
-}
-
-.summary {
-  padding: 24px;
-  border-radius: 14px;
-  background: #f8f8f8;
-}
+.result { display:none; margin-top:30px; }
 
 .grid {
-  display: grid;
-  grid-template-columns: repeat(2,1fr);
-  gap: 12px;
-  margin-top: 18px;
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:12px;
 }
 
 .card {
-  padding: 15px;
-  background: white;
-  border-radius: 10px;
-  border: 1px solid #eee;
+  background:#fafafa;
+  border:1px solid #eee;
+  border-radius:12px;
+  padding:16px;
 }
 
 .card strong {
-  display: block;
-  margin-bottom: 6px;
+  display:block;
+  margin-bottom:6px;
 }
 
 .decision {
-  margin-top: 20px;
-  padding: 20px;
-  border-radius: 12px;
-  font-size: 24px;
-  font-weight: bold;
+  margin-top:18px;
+  padding:20px;
+  border-radius:12px;
+  font-size:24px;
+  font-weight:bold;
 }
 
-.green {
-  background: #e5f7ed;
-  color: #137840;
-}
-
-.yellow {
-  background: #fff6d9;
-  color: #806000;
-}
-
-.orange {
-  background: #fff0df;
-  color: #a65300;
-}
-
-.red {
-  background: #fde7e7;
-  color: #a51f1f;
-}
+.green { background:#e5f7ed; color:#137840; }
+.yellow { background:#fff6d9; color:#806000; }
+.orange { background:#fff0df; color:#a65300; }
+.red { background:#fde7e7; color:#a51f1f; }
 
 .section {
-  margin-top: 22px;
-  padding: 20px;
-  border-radius: 12px;
-  background: #fafafa;
-}
-
-.section h3 {
-  margin-top: 0;
+  margin-top:22px;
+  padding:20px;
+  background:#fafafa;
+  border-radius:12px;
 }
 
 ul {
-  padding-left: 22px;
-  line-height: 1.8;
+  padding-left:22px;
+  line-height:1.8;
 }
 
 .notice {
-  margin-top: 22px;
-  font-size: 12px;
-  color: #777;
+  margin-top:20px;
+  color:#777;
+  font-size:12px;
 }
 
 @media(max-width:650px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
-
-  .container {
-    padding: 22px;
-  }
+  .grid { grid-template-columns:1fr; }
+  .container { padding:22px; }
 }
 </style>
 </head>
@@ -159,58 +117,29 @@ ul {
 <div class="container">
 
 <h1>MINERVA LAB</h1>
-<div class="subtitle">Project Evaluator #03 | 精度強化版</div>
+<div class="subtitle">Project Evaluator #04 | 実用判定強化版</div>
 
 <h2>案件内容を入力</h2>
 
 <textarea id="project"
-placeholder="クラウドワークスなどの募集内容を、できるだけ全文貼り付けてください。"></textarea>
+placeholder="クラウドワークス等の募集内容をできるだけ全文貼り付けてください。"></textarea>
 
 <button onclick="evaluateProject()">案件を詳しく分析する</button>
 
 <div id="result" class="result">
 
-<div class="summary">
-
-<h2>分析結果</h2>
-
 <div class="grid">
-
-<div class="card">
-<strong>💰 報酬</strong>
-<span id="reward"></span> / 10
-</div>
-
-<div class="card">
-<strong>🛠 難易度</strong>
-<span id="difficulty"></span> / 10
-</div>
-
-<div class="card">
-<strong>🤖 AI活用適性</strong>
-<span id="ai"></span> / 10
-</div>
-
-<div class="card">
-<strong>⏱ 作業負担</strong>
-<span id="workload"></span> / 10
-</div>
-
-<div class="card">
-<strong>⚠️ リスク</strong>
-<span id="risk"></span>
-</div>
-
-<div class="card">
-<strong>📊 総合スコア</strong>
-<span id="total"></span> / 100
-</div>
-
+  <div class="card"><strong>💰 報酬</strong><span id="reward"></span> / 10</div>
+  <div class="card"><strong>🛠 難易度</strong><span id="difficulty"></span> / 10</div>
+  <div class="card"><strong>🤖 AI活用適性</strong><span id="ai"></span> / 10</div>
+  <div class="card"><strong>⏱ 作業負担</strong><span id="workload"></span> / 10</div>
+  <div class="card"><strong>🧾 クライアント信頼度</strong><span id="client"></span> / 10</div>
+  <div class="card"><strong>⚠️ リスク</strong><span id="risk"></span></div>
+  <div class="card"><strong>💹 時間対効果</strong><span id="efficiency"></span> / 10</div>
+  <div class="card"><strong>📊 総合スコア</strong><span id="total"></span> / 100</div>
 </div>
 
 <div id="decision" class="decision"></div>
-
-</div>
 
 <div class="section">
 <h3>👑 判定理由</h3>
@@ -218,7 +147,7 @@ placeholder="クラウドワークスなどの募集内容を、できるだけ�
 </div>
 
 <div class="section">
-<h3>⚠️ 確認しておきたいポイント</h3>
+<h3>⚠️ 注意点</h3>
 <ul id="warnings"></ul>
 </div>
 
@@ -228,439 +157,304 @@ placeholder="クラウドワークスなどの募集内容を、できるだけ�
 </div>
 
 <div class="notice">
-※本ツールは募集文章から条件を自動評価する補助ツールです。
-最終的な応募・契約判断は必ず募集要項と契約条件を確認してください。
+※このツールは募集文から条件を自動評価する補助ツールです。
+最終判断は募集要項・契約条件・クライアント情報を確認してください。
 </div>
 
 </div>
 </div>
 
 <script>
-
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
+function clamp(v,min,max){
+  return Math.max(min,Math.min(max,v));
 }
 
-function extractMoney(text) {
+function contains(text, words){
+  return words.some(w => text.toLowerCase().includes(w.toLowerCase()));
+}
 
-  let values = [];
+function extractMoney(text){
+  let values=[];
 
-  const yenMatches =
-    text.match(/[\d,]+\s*円/g) || [];
-
-  yenMatches.forEach(item => {
-    const value =
-      parseInt(item.replace(/[^\d]/g, ""));
-
-    if (!isNaN(value)) values.push(value);
+  const yen=text.match(/[\d,]+\s*円/g)||[];
+  yen.forEach(x=>{
+    const v=parseInt(x.replace(/[^\d]/g,""));
+    if(!isNaN(v)) values.push(v);
   });
 
-  const manMatches =
-    text.match(/[\d.]+\s*万\s*円?/g) || [];
-
-  manMatches.forEach(item => {
-    const num =
-      parseFloat(item.replace(/[^\d.]/g, ""));
-
-    if (!isNaN(num)) values.push(num * 10000);
+  const man=text.match(/[\d.]+\s*万\s*円?/g)||[];
+  man.forEach(x=>{
+    const v=parseFloat(x.replace(/[^\d.]/g,""));
+    if(!isNaN(v)) values.push(v*10000);
   });
 
-  return values.length
-    ? Math.max(...values)
-    : 0;
+  return values.length ? Math.max(...values) : 0;
 }
 
-function contains(text, words) {
-  return words.some(word =>
-    text.toLowerCase().includes(
-      word.toLowerCase()
-    )
-  );
-}
+function evaluateProject(){
 
-function evaluateProject() {
+  const text=document.getElementById("project").value.trim();
 
-  const text =
-    document.getElementById("project").value.trim();
-
-  if (!text) {
+  if(!text){
     alert("案件内容を入力してください。");
     return;
   }
 
-  let reward = 5;
-  let difficulty = 5;
-  let ai = 5;
-  let workload = 5;
-  let risk = 2;
+  let reward=5;
+  let difficulty=5;
+  let ai=5;
+  let workload=5;
+  let client=5;
+  let risk=2;
+  let efficiency=5;
 
-  const reasons = [];
-  const warnings = [];
-  const checks = [];
+  const reasons=[];
+  const warnings=[];
+  const checks=[];
 
-  /*
-  ==========================
-  報酬
-  ==========================
-  */
+  const maxMoney=extractMoney(text);
 
-  const maxMoney = extractMoney(text);
-
-  if (maxMoney >= 100000) {
-    reward = 10;
+  if(maxMoney>=100000){
+    reward=10;
     reasons.push("高単価案件の可能性があります。");
-  }
-  else if (maxMoney >= 50000) {
-    reward = 9;
-    reasons.push("比較的高めの報酬が提示されています。");
-  }
-  else if (maxMoney >= 30000) {
-    reward = 8;
-    reasons.push("報酬水準は比較的良好です。");
-  }
-  else if (maxMoney >= 10000) {
-    reward = 6;
-  }
-  else if (maxMoney >= 5000) {
-    reward = 5;
-  }
-  else if (maxMoney > 0) {
-    reward = 3;
+  } else if(maxMoney>=50000){
+    reward=9;
+    reasons.push("報酬水準はかなり良好です。");
+  } else if(maxMoney>=30000){
+    reward=8;
+    reasons.push("比較的高めの報酬です。");
+  } else if(maxMoney>=10000){
+    reward=6;
+  } else if(maxMoney>=5000){
+    reward=5;
+  } else if(maxMoney>0){
+    reward=3;
     warnings.push("報酬単価が低い可能性があります。");
-  }
-  else {
-    reward = 4;
-    warnings.push("案件文から報酬金額を明確に取得できませんでした。");
-  }
-
-  /*
-  ==========================
-  難易度
-  ==========================
-  */
-
-  if (contains(text, [
-    "初心者歓迎",
-    "未経験歓迎",
-    "経験不問",
-    "実務経験不問"
-  ])) {
-    difficulty -= 2;
-    reasons.push("初心者・未経験者を受け入れる条件があります。");
+  } else {
+    reward=4;
+    warnings.push("報酬額を明確に読み取れませんでした。");
   }
 
-  if (contains(text, [
-    "Illustrator必須",
-    "Photoshop必須",
-    "After Effects",
-    "Premiere Pro必須",
-    "Figma必須",
-    "コーディング必須",
-    "プログラミング必須"
-  ])) {
-    difficulty += 2;
-    warnings.push("特定ソフト・専門スキルが必須条件になっています。");
+  if(contains(text,["初心者歓迎","未経験歓迎","経験不問","実務経験不問"])){
+    difficulty-=2;
+    reasons.push("未経験・初心者向け条件が含まれています。");
   }
 
-  if (contains(text, [
-    "実務経験3年以上",
-    "実務経験5年以上",
-    "経験者限定",
-    "プロのみ",
-    "専門知識必須"
-  ])) {
-    difficulty += 2;
-    warnings.push("高い実務経験を要求している可能性があります。");
+  if(contains(text,[
+    "Illustrator必須","Photoshop必須","After Effects",
+    "Premiere Pro必須","Figma必須",
+    "コーディング必須","プログラミング必須"
+  ])){
+    difficulty+=2;
+    warnings.push("特定の専門ソフトや技術が必須です。");
   }
 
-  difficulty = clamp(difficulty,1,10);
-
-  /*
-  ==========================
-  AI活用適性
-  ==========================
-  */
-
-  if (contains(text, [
-    "ChatGPT",
-    "生成AI",
-    "AI使用可",
-    "AI活用可",
-    "Canva"
-  ])) {
-    ai += 3;
-    reasons.push("AIを明示的に活用できる可能性があります。");
+  if(contains(text,[
+    "実務経験3年以上","実務経験5年以上","経験者限定",
+    "専門知識必須","プロのみ"
+  ])){
+    difficulty+=2;
+    warnings.push("高い実務経験を求められる可能性があります。");
   }
 
-  if (contains(text, [
-    "ライティング",
-    "記事作成",
-    "リサーチ",
-    "データ整理",
-    "SNS投稿",
-    "画像制作",
-    "バナー",
-    "ロゴ",
-    "アイデア",
-    "構成案"
-  ])) {
-    ai += 1;
+  difficulty=clamp(difficulty,1,10);
+
+  if(contains(text,["ChatGPT","生成AI","AI使用可","AI活用可","Canva"])){
+    ai+=3;
+    reasons.push("AI活用との相性が良い案件です。");
   }
 
-  if (contains(text, [
-    "AI禁止",
-    "生成AI禁止",
-    "ChatGPT禁止",
-    "AI使用不可"
-  ])) {
-    ai = 1;
-    warnings.push("AI使用禁止または制限の記載があります。");
+  if(contains(text,[
+    "ライティング","記事作成","画像制作","バナー",
+    "ロゴ","SNS投稿","リサーチ","データ整理"
+  ])){
+    ai+=1;
   }
 
-  ai = clamp(ai,1,10);
-
-  /*
-  ==========================
-  作業負担
-  ==========================
-  */
-
-  if (contains(text, [
-    "大量",
-    "100件",
-    "50件",
-    "毎日",
-    "継続的に大量"
-  ])) {
-    workload += 2;
-    warnings.push("作業量が多い可能性があります。");
+  if(contains(text,["AI禁止","生成AI禁止","ChatGPT禁止","AI使用不可"])){
+    ai=1;
+    warnings.push("AI利用が禁止または制限されています。");
   }
 
-  if (contains(text, [
-    "修正無制限",
-    "何度でも修正",
-    "納得するまで修正"
-  ])) {
-    workload += 3;
-    risk += 2;
+  ai=clamp(ai,1,10);
+
+  if(contains(text,["修正無制限","何度でも修正","納得するまで修正"])){
+    workload+=3;
+    risk+=2;
     warnings.push("修正回数が無制限の可能性があります。");
   }
 
-  if (contains(text, [
-    "即日",
-    "当日納品",
-    "24時間以内",
-    "翌日まで"
-  ])) {
-    workload += 2;
+  if(contains(text,["即日","当日納品","24時間以内","翌日まで"])){
+    workload+=2;
     warnings.push("納期が非常に短い可能性があります。");
   }
 
-  if (contains(text, [
-    "修正1回",
-    "修正2回",
-    "納期相談可"
-  ])) {
-    workload -= 1;
+  if(contains(text,["大量","100件","50件","毎日","大量作成"])){
+    workload+=2;
+    warnings.push("作業量が多い可能性があります。");
   }
 
-  workload = clamp(workload,1,10);
-
-  /*
-  ==========================
-  リスク
-  ==========================
-  */
-
-  if (contains(text, [
-    "LINE追加",
-    "LINEで連絡",
-    "Telegram",
-    "外部ツールへ移動",
-    "契約前に外部連絡"
-  ])) {
-    risk += 3;
-    warnings.push("契約前の外部連絡・誘導に注意してください。");
+  if(contains(text,["修正1回","修正2回","納期相談可"])){
+    workload-=1;
   }
 
-  if (contains(text, [
-    "教材購入",
-    "スクール入会",
-    "登録料",
-    "初期費用",
-    "商品購入"
-  ])) {
-    risk += 5;
-    warnings.push("金銭負担を求める内容が含まれている可能性があります。");
+  workload=clamp(workload,1,10);
+
+  if(contains(text,["本人確認済み","本人確認提出済み"])){
+    client+=2;
+    reasons.push("クライアント本人確認済みの記載があります。");
   }
 
-  if (contains(text, [
-    "無報酬テスト",
-    "無料テスト",
-    "テスト報酬なし"
-  ])) {
-    risk += 3;
+  if(contains(text,["本人確認未提出","本人確認なし"])){
+    client-=2;
+    warnings.push("クライアント本人確認が未完了の可能性があります。");
+  }
+
+  if(contains(text,["評価5.0","評価4.9","評価4.8","高評価"])){
+    client+=2;
+    reasons.push("クライアント評価が高い可能性があります。");
+  }
+
+  if(contains(text,["実績0件","募集実績0","評価0"])){
+    client-=2;
+    warnings.push("クライアント実績が少ない可能性があります。");
+  }
+
+  client=clamp(client,1,10);
+
+  if(contains(text,["LINE追加","LINEで連絡","Telegram","契約前に外部連絡"])){
+    risk+=3;
+    warnings.push("契約前の外部連絡誘導に注意してください。");
+  }
+
+  if(contains(text,["教材購入","スクール入会","登録料","初期費用","商品購入"])){
+    risk+=5;
+    warnings.push("応募者側に金銭負担を求める可能性があります。");
+  }
+
+  if(contains(text,["無料テスト","無報酬テスト","テスト報酬なし"])){
+    risk+=3;
     warnings.push("無報酬テストの可能性があります。");
   }
 
-  if (contains(text, [
-    "著作権譲渡",
-    "著作財産権",
-    "権利譲渡"
-  ])) {
-    risk += 1;
+  if(contains(text,["著作権譲渡","権利譲渡","著作財産権"])){
+    risk+=1;
     checks.push("著作権・二次利用・ポートフォリオ掲載可否を確認してください。");
   }
 
-  if (contains(text, [
-    "本人確認未提出",
-    "本人確認なし"
-  ])) {
-    risk += 1;
-    checks.push("クライアントの本人確認状況を確認してください。");
+  risk=clamp(risk,1,10);
+
+  efficiency=5;
+
+  if(reward>=8 && workload<=5){
+    efficiency+=3;
+    reasons.push("報酬と作業負担のバランスが良好です。");
   }
 
-  if (contains(text, [
-    "評価0",
-    "実績0件",
-    "募集実績0"
-  ])) {
-    risk += 1;
-    checks.push("クライアントの過去実績・評価を確認してください。");
+  if(reward<=4 && workload>=6){
+    efficiency-=3;
+    warnings.push("作業量に対して報酬が低い可能性があります。");
   }
 
-  risk = clamp(risk,1,10);
-
-  /*
-  ==========================
-  総合スコア
-  ==========================
-  */
-
-  const total = Math.round(
-      reward * 3.2
-    + ai * 2.2
-    + (11 - difficulty) * 1.8
-    + (11 - workload) * 1.5
-    + (11 - risk) * 1.3
-  );
-
-  const finalScore =
-    clamp(total,0,100);
-
-  let decision;
-  let decisionClass;
-
-  if (finalScore >= 80) {
-    decision = "🟢 応募推奨";
-    decisionClass = "green";
-  }
-  else if (finalScore >= 60) {
-    decision = "🟡 条件確認後に応募";
-    decisionClass = "yellow";
-  }
-  else if (finalScore >= 40) {
-    decision = "🟠 慎重に判断";
-    decisionClass = "orange";
-  }
-  else {
-    decision = "🔴 見送り推奨";
-    decisionClass = "red";
+  if(difficulty>=8){
+    efficiency-=1;
   }
 
-  /*
-  ==========================
-  追加チェック
-  ==========================
-  */
+  efficiency=clamp(efficiency,1,10);
 
-  if (!contains(text,[
-    "納期",
-    "納品"
-  ])) {
-    checks.push("納期が明確か確認してください。");
+  if(!contains(text,["納期","納品"])){
+    checks.push("納期・納品期限を確認してください。");
   }
 
-  if (!contains(text,[
-    "修正"
-  ])) {
+  if(!contains(text,["修正"])){
     checks.push("修正回数・追加修正料金を確認してください。");
   }
 
-  if (!contains(text,[
-    "AI",
-    "ChatGPT",
-    "生成AI"
-  ])) {
-    checks.push("AI利用が可能か、必要であれば事前確認してください。");
+  if(!contains(text,["AI","ChatGPT","生成AI"])){
+    checks.push("AI利用可否を必要に応じて確認してください。");
   }
 
-  if (checks.length === 0) {
-    checks.push("大きな不足情報は検出されませんでした。");
+  if(!contains(text,["著作権","権利譲渡"])){
+    checks.push("成果物の権利条件を確認してください。");
   }
 
-  if (reasons.length === 0) {
-    reasons.push("案件条件に目立った加点要素は見つかりませんでした。");
+  const total=Math.round(
+      reward*2.4
+    + ai*1.4
+    + (11-difficulty)*1.6
+    + (11-workload)*1.4
+    + client*1.5
+    + (11-risk)*1.5
+    + efficiency*1.6
+  );
+
+  const finalScore=clamp(total,0,100);
+
+  let decision="";
+  let cls="";
+
+  if(finalScore>=80){
+    decision="🟢 応募推奨";
+    cls="green";
+  } else if(finalScore>=65){
+    decision="🟡 条件確認後に応募";
+    cls="yellow";
+  } else if(finalScore>=45){
+    decision="🟠 慎重に判断";
+    cls="orange";
+  } else {
+    decision="🔴 見送り推奨";
+    cls="red";
   }
 
-  if (warnings.length === 0) {
+  if(risk>=8){
+    decision="🔴 見送り推奨";
+    cls="red";
+    warnings.push("高リスク要素が検出されたため、総合点に関わらず見送り寄りです。");
+  }
+
+  if(reasons.length===0){
+    reasons.push("大きな加点要素は検出されませんでした。");
+  }
+
+  if(warnings.length===0){
     warnings.push("重大なリスクワードは検出されませんでした。");
   }
 
-  /*
-  ==========================
-  表示
-  ==========================
-  */
+  if(checks.length===0){
+    checks.push("大きな不足情報は検出されませんでした。");
+  }
 
-  document.getElementById("reward").textContent =
-    reward;
+  document.getElementById("reward").textContent=reward;
+  document.getElementById("difficulty").textContent=difficulty;
+  document.getElementById("ai").textContent=ai;
+  document.getElementById("workload").textContent=workload;
+  document.getElementById("client").textContent=client;
+  document.getElementById("efficiency").textContent=efficiency;
 
-  document.getElementById("difficulty").textContent =
-    difficulty;
+  let riskLabel="低";
+  if(risk>=7) riskLabel="高";
+  else if(risk>=4) riskLabel="中";
 
-  document.getElementById("ai").textContent =
-    ai;
+  document.getElementById("risk").textContent=riskLabel+" ("+risk+"/10)";
+  document.getElementById("total").textContent=finalScore;
 
-  document.getElementById("workload").textContent =
-    workload;
+  const box=document.getElementById("decision");
+  box.textContent=decision;
+  box.className="decision "+cls;
 
-  let riskLabel = "低";
+  document.getElementById("reasons").innerHTML=
+    reasons.map(x=>"<li>"+x+"</li>").join("");
 
-  if (risk >= 7) riskLabel = "高";
-  else if (risk >= 4) riskLabel = "中";
+  document.getElementById("warnings").innerHTML=
+    warnings.map(x=>"<li>"+x+"</li>").join("");
 
-  document.getElementById("risk").textContent =
-    riskLabel + " (" + risk + "/10)";
+  document.getElementById("checks").innerHTML=
+    checks.map(x=>"<li>"+x+"</li>").join("");
 
-  document.getElementById("total").textContent =
-    finalScore;
-
-  const decisionBox =
-    document.getElementById("decision");
-
-  decisionBox.textContent =
-    decision;
-
-  decisionBox.className =
-    "decision " + decisionClass;
-
-  document.getElementById("reasons").innerHTML =
-    reasons.map(x => "<li>" + x + "</li>").join("");
-
-  document.getElementById("warnings").innerHTML =
-    warnings.map(x => "<li>" + x + "</li>").join("");
-
-  document.getElementById("checks").innerHTML =
-    checks.map(x => "<li>" + x + "</li>").join("");
-
-  document.getElementById("result").style.display =
-    "block";
-
-  document.getElementById("result")
-    .scrollIntoView({behavior:"smooth"});
+  document.getElementById("result").style.display="block";
+  document.getElementById("result").scrollIntoView({behavior:"smooth"});
 }
-
 </script>
 
 </body>
