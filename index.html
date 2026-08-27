@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MINERVA LAB | 案件判定ツール #27</title>
+<title>MINERVA LAB | 案件判定ツール #28</title>
 
 <style>
 
@@ -491,7 +491,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator #27 | クライアント信頼度・リスク判定精度版
+Project Evaluator #28 | クライアント信頼度・安全性整合版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -2796,46 +2796,14 @@ function evaluateProject(){
       )/3
     );
 
-  let safetyAxis=
-    Math.round(
-      client*0.65+
-      (11-risk)*0.35
-    );
+  /* =========================
+     #28 クライアント信頼度・安全性整合
+     ・4軸の「クライアント安全性」はクライアント信頼度と同じ点数に統一
+     ・危険要素は別枠の「リスク」で表現し、二重計算による数値矛盾を防止
+  ========================= */
+  let safetyAxis=client;
 
-  if(
-    unverified &&
-    noReviews &&
-    littleHistory
-  ){
-
-    safetyAxis=
-      Math.min(
-        safetyAxis,
-        3
-      );
-
-  }
-
-  if(externalContact){
-
-    safetyAxis-=2;
-
-  }
-
-  if(moneyRequest){
-
-    safetyAxis-=4;
-
-  }
-
-  if(unpaidTest){
-
-    safetyAxis-=2;
-
-  }
-
-  /* 安全性が低いのに低リスクと表示しない最終ガード */
-
+  /* 信頼度が低い場合はリスク側にも最低ラインを設定 */
   if(safetyAxis<=2){
     risk=Math.max(risk,7);
   }
@@ -2844,14 +2812,6 @@ function evaluateProject(){
   }
 
   risk=clamp(risk,1,10);
-
-  safetyAxis=Math.min(
-    safetyAxis,
-    Math.round(
-      client*0.65+
-      (11-risk)*0.35
-    )
-  );
 
   profitAxis=
     clamp(
