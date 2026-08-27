@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MINERVA LAB | 案件判定ツール #28</title>
+<title>MINERVA LAB | 案件判定ツール #29</title>
 
 <style>
 
@@ -491,7 +491,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator #28 | クライアント信頼度・安全性整合版
+Project Evaluator #29 | 情報不足時の総合スコア補正版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -2077,6 +2077,12 @@ function evaluateProject(){
 
   }
 
+  if(missingImportantCount>0){
+    warnings.push(
+      "情報不足は総合スコアにも減点反映されます。未確認1項目につき3点減点します。"
+    );
+  }
+
   if(rewardBasisMax>=50000){
 
     reward=9;
@@ -2911,9 +2917,28 @@ function evaluateProject(){
       100
     );
 
-  if(missingImportantCount>=2){
-    totalScore=Math.min(totalScore,59);
+  /* =========================
+     #29 情報不足時の総合スコア補正
+     ・重要条件の未確認1項目につき3点減点
+     ・減点は総合スコアに直接反映
+     ・不足数に応じてランク上限も制御
+  ========================= */
+  const missingPenalty=
+    missingImportantCount*3;
+
+  if(missingPenalty>0){
+    totalScore-=missingPenalty;
+
+    numbers.push(
+      "重要条件の未確認 "+
+      missingImportantCount+
+      "項目 × 3点 = "+
+      missingPenalty+
+      "点を総合スコアから減点しています。"
+    );
   }
+
+  totalScore=clamp(totalScore,0,100);
 
   if(aiPolicy==="conflict"){
     totalScore=Math.min(totalScore,59);
@@ -3038,7 +3063,8 @@ function evaluateProject(){
   }
   else if(
     totalScore>=60 &&
-    safetyAxis>=4
+    safetyAxis>=4 &&
+    missingImportantCount<2
   ){
 
     rank="B";
@@ -3082,6 +3108,20 @@ function evaluateProject(){
     rankClass=
       "rank-d";
 
+  }
+
+  /* #29 情報不足によるランク上限 */
+  if(missingImportantCount>=4 && rank!=="D"){
+    rank="C";
+    rankTitle="情報不足が多い";
+    rankDetail="重要条件の未確認が4項目以上あります。条件確認が終わるまで応募優先度は上げられません。";
+    rankClass="rank-c";
+  }
+  else if(missingImportantCount>=2 && (rank==="S" || rank==="A" || rank==="B")){
+    rank="C";
+    rankTitle="不足条件を確認";
+    rankDetail="重要条件が複数不足しています。確認が完了するまで応募優先度はCが上限です。";
+    rankClass="rank-c";
   }
 
   if(
@@ -3770,7 +3810,9 @@ function evaluateProject(){
       if(missingImportantCount>=2){
 
         applicationNote.textContent=
-          "重要条件が複数不足しているため、応募文は生成しません。先にクライアントへの確認文を使用してください。";
+          "重要条件が"+
+          missingImportantCount+
+          "項目不足しているため、応募文は生成しません。まずクライアントへの確認文で条件を確認してください。";
 
       }
       else{
