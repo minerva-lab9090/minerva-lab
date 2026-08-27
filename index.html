@@ -789,6 +789,11 @@ function contains(text,words){
 
 function detectAiPolicy(text){
 
+  const normalized=
+    text
+      .replace(/\s+/g,"")
+      .replace(/[「」『』【】（）()]/g,"");
+
   const prohibited=
     contains(text,[
       "AI禁止",
@@ -806,14 +811,16 @@ function detectAiPolicy(text){
       "ChatGPT利用不可",
       "AIでの作成不可",
       "AIによる作成不可"
-    ]);
+    ]) ||
+    /(?:生成AI|ChatGPT|AI)(?:の|を)?(?:(?:使用|利用|活用)(?:すること)?|生成|作成)?(?:は|を)?(?:禁止|不可|NG|認めない|認めません)/i.test(normalized);
 
   if(prohibited){
     return "prohibited";
   }
 
   const allowed=
-    contains(text,[
+    !/(?:生成AI|ChatGPT|AI)(?:の)?(?:使用|利用|活用)?可否/i.test(normalized) &&
+    (contains(text,[
       "AI使用可",
       "AI利用可",
       "AI活用可",
@@ -825,7 +832,8 @@ function detectAiPolicy(text){
       "ChatGPT利用可",
       "AI使用OK",
       "AI利用OK"
-    ]);
+    ]) ||
+    /(?:生成AI|ChatGPT|AI)(?:の)?(?:使用|利用|活用)?(?:は|を)?(?:可能|許可|OK)/i.test(normalized));
 
   if(allowed){
     return "allowed";
