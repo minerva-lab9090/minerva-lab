@@ -3,108 +3,153 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MINERVA LAB | AI案件判定ツール</title>
+
+<title>MINERVA LAB | 案件判定ツール #03</title>
 
 <style>
 body {
-    font-family: Arial, "Noto Sans JP", sans-serif;
-    background: #f5f6fa;
-    margin: 0;
-    padding: 40px 20px;
-    color: #222;
+  font-family: Arial, "Noto Sans JP", sans-serif;
+  background: #f4f5f8;
+  margin: 0;
+  padding: 35px 18px;
+  color: #222;
 }
 
 .container {
-    max-width: 800px;
-    margin: auto;
-    background: white;
-    padding: 35px;
-    border-radius: 18px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+  max-width: 880px;
+  margin: auto;
+  background: #fff;
+  padding: 34px;
+  border-radius: 18px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.08);
 }
 
 h1 {
-    margin-bottom: 5px;
+  margin: 0 0 5px;
 }
 
 .subtitle {
-    color: #777;
-    margin-bottom: 30px;
+  color: #777;
+  margin-bottom: 28px;
 }
 
 textarea {
-    width: 100%;
-    height: 220px;
-    box-sizing: border-box;
-    padding: 16px;
-    font-size: 16px;
-    border: 1px solid #ccc;
-    border-radius: 10px;
-    resize: vertical;
+  width: 100%;
+  min-height: 260px;
+  padding: 16px;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  font-size: 15px;
+  line-height: 1.6;
+  resize: vertical;
 }
 
 button {
-    width: 100%;
-    margin-top: 18px;
-    padding: 17px;
-    border: none;
-    border-radius: 10px;
-    background: #222;
-    color: white;
-    font-size: 17px;
-    font-weight: bold;
-    cursor: pointer;
+  width: 100%;
+  margin-top: 16px;
+  padding: 17px;
+  border: 0;
+  border-radius: 11px;
+  background: #222;
+  color: #fff;
+  font-size: 17px;
+  font-weight: bold;
+  cursor: pointer;
 }
 
 button:hover {
-    background: #444;
+  opacity: .88;
 }
 
 .result {
-    display: none;
-    margin-top: 30px;
-    padding: 25px;
-    background: #fafafa;
-    border-radius: 14px;
+  display: none;
+  margin-top: 28px;
 }
 
-.score {
-    margin: 12px 0;
-    font-size: 17px;
+.summary {
+  padding: 24px;
+  border-radius: 14px;
+  background: #f8f8f8;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2,1fr);
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.card {
+  padding: 15px;
+  background: white;
+  border-radius: 10px;
+  border: 1px solid #eee;
+}
+
+.card strong {
+  display: block;
+  margin-bottom: 6px;
 }
 
 .decision {
-    margin-top: 22px;
-    padding: 18px;
-    border-radius: 10px;
-    font-size: 24px;
-    font-weight: bold;
-}
-
-.reason {
-    margin-top: 20px;
-    line-height: 1.8;
+  margin-top: 20px;
+  padding: 20px;
+  border-radius: 12px;
+  font-size: 24px;
+  font-weight: bold;
 }
 
 .green {
-    background: #e8f8ef;
-    color: #137a42;
+  background: #e5f7ed;
+  color: #137840;
 }
 
 .yellow {
-    background: #fff7dc;
-    color: #8a6700;
+  background: #fff6d9;
+  color: #806000;
+}
+
+.orange {
+  background: #fff0df;
+  color: #a65300;
 }
 
 .red {
-    background: #fdeaea;
-    color: #a82323;
+  background: #fde7e7;
+  color: #a51f1f;
+}
+
+.section {
+  margin-top: 22px;
+  padding: 20px;
+  border-radius: 12px;
+  background: #fafafa;
+}
+
+.section h3 {
+  margin-top: 0;
+}
+
+ul {
+  padding-left: 22px;
+  line-height: 1.8;
 }
 
 .notice {
-    margin-top: 25px;
-    color: #777;
-    font-size: 13px;
+  margin-top: 22px;
+  font-size: 12px;
+  color: #777;
+}
+
+@media(max-width:650px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .container {
+    padding: 22px;
+  }
 }
 </style>
 </head>
@@ -114,184 +159,506 @@ button:hover {
 <div class="container">
 
 <h1>MINERVA LAB</h1>
-<div class="subtitle">AI Project Evaluator #02</div>
+<div class="subtitle">Project Evaluator #03 | 精度強化版</div>
 
 <h2>案件内容を入力</h2>
 
 <textarea id="project"
-placeholder="ここにクラウドワークスなどの案件内容を貼り付けてください。"></textarea>
+placeholder="クラウドワークスなどの募集内容を、できるだけ全文貼り付けてください。"></textarea>
 
-<button onclick="evaluateProject()">案件を分析する</button>
+<button onclick="evaluateProject()">案件を詳しく分析する</button>
 
 <div id="result" class="result">
 
+<div class="summary">
+
 <h2>分析結果</h2>
 
-<div class="score">💰 報酬評価：<span id="reward"></span> / 10</div>
-<div class="score">🛠 難易度：<span id="difficulty"></span> / 10</div>
-<div class="score">🤖 AI活用度：<span id="ai"></span> / 10</div>
-<div class="score">⚠️ リスク：<span id="risk"></span></div>
-<div class="score">📊 総合スコア：<span id="total"></span> / 100</div>
+<div class="grid">
+
+<div class="card">
+<strong>💰 報酬</strong>
+<span id="reward"></span> / 10
+</div>
+
+<div class="card">
+<strong>🛠 難易度</strong>
+<span id="difficulty"></span> / 10
+</div>
+
+<div class="card">
+<strong>🤖 AI活用適性</strong>
+<span id="ai"></span> / 10
+</div>
+
+<div class="card">
+<strong>⏱ 作業負担</strong>
+<span id="workload"></span> / 10
+</div>
+
+<div class="card">
+<strong>⚠️ リスク</strong>
+<span id="risk"></span>
+</div>
+
+<div class="card">
+<strong>📊 総合スコア</strong>
+<span id="total"></span> / 100
+</div>
+
+</div>
 
 <div id="decision" class="decision"></div>
 
-<div id="reason" class="reason"></div>
+</div>
 
+<div class="section">
+<h3>👑 判定理由</h3>
+<ul id="reasons"></ul>
+</div>
+
+<div class="section">
+<h3>⚠️ 確認しておきたいポイント</h3>
+<ul id="warnings"></ul>
+</div>
+
+<div class="section">
+<h3>💡 応募前チェック</h3>
+<ul id="checks"></ul>
 </div>
 
 <div class="notice">
-※この判定は案件選びを補助するための参考評価です。
+※本ツールは募集文章から条件を自動評価する補助ツールです。
+最終的な応募・契約判断は必ず募集要項と契約条件を確認してください。
 </div>
 
+</div>
 </div>
 
 <script>
 
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function extractMoney(text) {
+
+  let values = [];
+
+  const yenMatches =
+    text.match(/[\d,]+\s*円/g) || [];
+
+  yenMatches.forEach(item => {
+    const value =
+      parseInt(item.replace(/[^\d]/g, ""));
+
+    if (!isNaN(value)) values.push(value);
+  });
+
+  const manMatches =
+    text.match(/[\d.]+\s*万\s*円?/g) || [];
+
+  manMatches.forEach(item => {
+    const num =
+      parseFloat(item.replace(/[^\d.]/g, ""));
+
+    if (!isNaN(num)) values.push(num * 10000);
+  });
+
+  return values.length
+    ? Math.max(...values)
+    : 0;
+}
+
+function contains(text, words) {
+  return words.some(word =>
+    text.toLowerCase().includes(
+      word.toLowerCase()
+    )
+  );
+}
+
 function evaluateProject() {
 
-    const text = document.getElementById("project").value;
+  const text =
+    document.getElementById("project").value.trim();
 
-    if (text.trim() === "") {
-        alert("案件内容を入力してください");
-        return;
-    }
+  if (!text) {
+    alert("案件内容を入力してください。");
+    return;
+  }
 
-    let reward = 5;
-    let difficulty = 5;
-    let ai = 5;
-    let riskScore = 3;
+  let reward = 5;
+  let difficulty = 5;
+  let ai = 5;
+  let workload = 5;
+  let risk = 2;
 
-    // 報酬判定
-    const moneyMatches = text.match(/[\d,]+円/g);
+  const reasons = [];
+  const warnings = [];
+  const checks = [];
 
-    if (moneyMatches) {
+  /*
+  ==========================
+  報酬
+  ==========================
+  */
 
-        let maxMoney = 0;
+  const maxMoney = extractMoney(text);
 
-        moneyMatches.forEach(item => {
+  if (maxMoney >= 100000) {
+    reward = 10;
+    reasons.push("高単価案件の可能性があります。");
+  }
+  else if (maxMoney >= 50000) {
+    reward = 9;
+    reasons.push("比較的高めの報酬が提示されています。");
+  }
+  else if (maxMoney >= 30000) {
+    reward = 8;
+    reasons.push("報酬水準は比較的良好です。");
+  }
+  else if (maxMoney >= 10000) {
+    reward = 6;
+  }
+  else if (maxMoney >= 5000) {
+    reward = 5;
+  }
+  else if (maxMoney > 0) {
+    reward = 3;
+    warnings.push("報酬単価が低い可能性があります。");
+  }
+  else {
+    reward = 4;
+    warnings.push("案件文から報酬金額を明確に取得できませんでした。");
+  }
 
-            const value =
-                parseInt(item.replace(/,/g, "").replace("円", ""));
+  /*
+  ==========================
+  難易度
+  ==========================
+  */
 
-            if (value > maxMoney) {
-                maxMoney = value;
-            }
+  if (contains(text, [
+    "初心者歓迎",
+    "未経験歓迎",
+    "経験不問",
+    "実務経験不問"
+  ])) {
+    difficulty -= 2;
+    reasons.push("初心者・未経験者を受け入れる条件があります。");
+  }
 
-        });
+  if (contains(text, [
+    "Illustrator必須",
+    "Photoshop必須",
+    "After Effects",
+    "Premiere Pro必須",
+    "Figma必須",
+    "コーディング必須",
+    "プログラミング必須"
+  ])) {
+    difficulty += 2;
+    warnings.push("特定ソフト・専門スキルが必須条件になっています。");
+  }
 
-        if (maxMoney >= 50000) reward = 10;
-        else if (maxMoney >= 30000) reward = 9;
-        else if (maxMoney >= 10000) reward = 7;
-        else if (maxMoney >= 5000) reward = 6;
-        else if (maxMoney >= 1000) reward = 4;
-        else reward = 2;
-    }
+  if (contains(text, [
+    "実務経験3年以上",
+    "実務経験5年以上",
+    "経験者限定",
+    "プロのみ",
+    "専門知識必須"
+  ])) {
+    difficulty += 2;
+    warnings.push("高い実務経験を要求している可能性があります。");
+  }
 
-    // 難易度
-    if (/未経験|初心者歓迎|経験不問/.test(text)) {
-        difficulty -= 2;
-    }
+  difficulty = clamp(difficulty,1,10);
 
-    if (/Illustrator|Photoshop|コーディング|JavaScript|プログラミング/.test(text)) {
-        difficulty += 2;
-    }
+  /*
+  ==========================
+  AI活用適性
+  ==========================
+  */
 
-    if (/動画編集|アニメーション|After Effects/.test(text)) {
-        difficulty += 2;
-    }
+  if (contains(text, [
+    "ChatGPT",
+    "生成AI",
+    "AI使用可",
+    "AI活用可",
+    "Canva"
+  ])) {
+    ai += 3;
+    reasons.push("AIを明示的に活用できる可能性があります。");
+  }
 
-    difficulty = Math.max(1, Math.min(10, difficulty));
+  if (contains(text, [
+    "ライティング",
+    "記事作成",
+    "リサーチ",
+    "データ整理",
+    "SNS投稿",
+    "画像制作",
+    "バナー",
+    "ロゴ",
+    "アイデア",
+    "構成案"
+  ])) {
+    ai += 1;
+  }
 
-    // AI活用度
-    if (/AI|ChatGPT|生成AI|Canva/.test(text)) {
-        ai += 3;
-    }
+  if (contains(text, [
+    "AI禁止",
+    "生成AI禁止",
+    "ChatGPT禁止",
+    "AI使用不可"
+  ])) {
+    ai = 1;
+    warnings.push("AI使用禁止または制限の記載があります。");
+  }
 
-    if (/デザイン|文章|ライティング|画像|バナー|ロゴ/.test(text)) {
-        ai += 1;
-    }
+  ai = clamp(ai,1,10);
 
-    ai = Math.max(1, Math.min(10, ai));
+  /*
+  ==========================
+  作業負担
+  ==========================
+  */
 
-    // リスク
-    if (/修正無制限|何度でも修正/.test(text)) {
-        riskScore += 3;
-    }
+  if (contains(text, [
+    "大量",
+    "100件",
+    "50件",
+    "毎日",
+    "継続的に大量"
+  ])) {
+    workload += 2;
+    warnings.push("作業量が多い可能性があります。");
+  }
 
-    if (/著作権譲渡|権利譲渡/.test(text)) {
-        riskScore += 1;
-    }
+  if (contains(text, [
+    "修正無制限",
+    "何度でも修正",
+    "納得するまで修正"
+  ])) {
+    workload += 3;
+    risk += 2;
+    warnings.push("修正回数が無制限の可能性があります。");
+  }
 
-    if (/外部連絡|LINE|Telegram/.test(text)) {
-        riskScore += 3;
-    }
+  if (contains(text, [
+    "即日",
+    "当日納品",
+    "24時間以内",
+    "翌日まで"
+  ])) {
+    workload += 2;
+    warnings.push("納期が非常に短い可能性があります。");
+  }
 
-    if (/テスト無料|無報酬/.test(text)) {
-        riskScore += 3;
-    }
+  if (contains(text, [
+    "修正1回",
+    "修正2回",
+    "納期相談可"
+  ])) {
+    workload -= 1;
+  }
 
-    riskScore = Math.min(10, riskScore);
+  workload = clamp(workload,1,10);
 
-    let riskText = "低";
+  /*
+  ==========================
+  リスク
+  ==========================
+  */
 
-    if (riskScore >= 7) {
-        riskText = "高";
-    } else if (riskScore >= 5) {
-        riskText = "中";
-    }
+  if (contains(text, [
+    "LINE追加",
+    "LINEで連絡",
+    "Telegram",
+    "外部ツールへ移動",
+    "契約前に外部連絡"
+  ])) {
+    risk += 3;
+    warnings.push("契約前の外部連絡・誘導に注意してください。");
+  }
 
-    // 総合点
-    const total =
-        Math.round(
-            reward * 4 +
-            ai * 3 +
-            (10 - difficulty) * 2 +
-            (10 - riskScore)
-        );
+  if (contains(text, [
+    "教材購入",
+    "スクール入会",
+    "登録料",
+    "初期費用",
+    "商品購入"
+  ])) {
+    risk += 5;
+    warnings.push("金銭負担を求める内容が含まれている可能性があります。");
+  }
 
-    let decision = "";
-    let className = "";
-    let reason = "";
+  if (contains(text, [
+    "無報酬テスト",
+    "無料テスト",
+    "テスト報酬なし"
+  ])) {
+    risk += 3;
+    warnings.push("無報酬テストの可能性があります。");
+  }
 
-    if (total >= 70) {
+  if (contains(text, [
+    "著作権譲渡",
+    "著作財産権",
+    "権利譲渡"
+  ])) {
+    risk += 1;
+    checks.push("著作権・二次利用・ポートフォリオ掲載可否を確認してください。");
+  }
 
-        decision = "🟢 応募推奨";
-        className = "green";
+  if (contains(text, [
+    "本人確認未提出",
+    "本人確認なし"
+  ])) {
+    risk += 1;
+    checks.push("クライアントの本人確認状況を確認してください。");
+  }
 
-        reason =
-        "報酬・難易度・AI活用とのバランスが比較的良い案件です。応募候補として詳しい条件を確認する価値があります。";
+  if (contains(text, [
+    "評価0",
+    "実績0件",
+    "募集実績0"
+  ])) {
+    risk += 1;
+    checks.push("クライアントの過去実績・評価を確認してください。");
+  }
 
-    } else if (total >= 50) {
+  risk = clamp(risk,1,10);
 
-        decision = "🟡 条件付き応募";
-        className = "yellow";
+  /*
+  ==========================
+  総合スコア
+  ==========================
+  */
 
-        reason =
-        "応募可能ですが、作業量・修正回数・納期・納品形式などを確認してから判断するのがおすすめです。";
+  const total = Math.round(
+      reward * 3.2
+    + ai * 2.2
+    + (11 - difficulty) * 1.8
+    + (11 - workload) * 1.5
+    + (11 - risk) * 1.3
+  );
 
-    } else {
+  const finalScore =
+    clamp(total,0,100);
 
-        decision = "🔴 見送り候補";
-        className = "red";
+  let decision;
+  let decisionClass;
 
-        reason =
-        "報酬に対する作業負担やリスクが高い可能性があります。他案件との比較をおすすめします。";
-    }
+  if (finalScore >= 80) {
+    decision = "🟢 応募推奨";
+    decisionClass = "green";
+  }
+  else if (finalScore >= 60) {
+    decision = "🟡 条件確認後に応募";
+    decisionClass = "yellow";
+  }
+  else if (finalScore >= 40) {
+    decision = "🟠 慎重に判断";
+    decisionClass = "orange";
+  }
+  else {
+    decision = "🔴 見送り推奨";
+    decisionClass = "red";
+  }
 
-    document.getElementById("reward").textContent = reward;
-    document.getElementById("difficulty").textContent = difficulty;
-    document.getElementById("ai").textContent = ai;
-    document.getElementById("risk").textContent = riskText;
-    document.getElementById("total").textContent = total;
+  /*
+  ==========================
+  追加チェック
+  ==========================
+  */
 
-    const decisionBox = document.getElementById("decision");
+  if (!contains(text,[
+    "納期",
+    "納品"
+  ])) {
+    checks.push("納期が明確か確認してください。");
+  }
 
-    decisionBox.textContent = decision;
-    decisionBox.className = "decision " + className;
+  if (!contains(text,[
+    "修正"
+  ])) {
+    checks.push("修正回数・追加修正料金を確認してください。");
+  }
 
-    document.getElementById("reason").textContent = reason;
+  if (!contains(text,[
+    "AI",
+    "ChatGPT",
+    "生成AI"
+  ])) {
+    checks.push("AI利用が可能か、必要であれば事前確認してください。");
+  }
 
-    document.getElementById("result").style.display = "block";
+  if (checks.length === 0) {
+    checks.push("大きな不足情報は検出されませんでした。");
+  }
+
+  if (reasons.length === 0) {
+    reasons.push("案件条件に目立った加点要素は見つかりませんでした。");
+  }
+
+  if (warnings.length === 0) {
+    warnings.push("重大なリスクワードは検出されませんでした。");
+  }
+
+  /*
+  ==========================
+  表示
+  ==========================
+  */
+
+  document.getElementById("reward").textContent =
+    reward;
+
+  document.getElementById("difficulty").textContent =
+    difficulty;
+
+  document.getElementById("ai").textContent =
+    ai;
+
+  document.getElementById("workload").textContent =
+    workload;
+
+  let riskLabel = "低";
+
+  if (risk >= 7) riskLabel = "高";
+  else if (risk >= 4) riskLabel = "中";
+
+  document.getElementById("risk").textContent =
+    riskLabel + " (" + risk + "/10)";
+
+  document.getElementById("total").textContent =
+    finalScore;
+
+  const decisionBox =
+    document.getElementById("decision");
+
+  decisionBox.textContent =
+    decision;
+
+  decisionBox.className =
+    "decision " + decisionClass;
+
+  document.getElementById("reasons").innerHTML =
+    reasons.map(x => "<li>" + x + "</li>").join("");
+
+  document.getElementById("warnings").innerHTML =
+    warnings.map(x => "<li>" + x + "</li>").join("");
+
+  document.getElementById("checks").innerHTML =
+    checks.map(x => "<li>" + x + "</li>").join("");
+
+  document.getElementById("result").style.display =
+    "block";
+
+  document.getElementById("result")
+    .scrollIntoView({behavior:"smooth"});
 }
 
 </script>
