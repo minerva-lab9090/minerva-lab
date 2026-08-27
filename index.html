@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MINERVA LAB | 案件判定ツール #20</title>
+<title>MINERVA LAB | 案件判定ツール #21</title>
 
 <style>
 
@@ -464,7 +464,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator #20 | 記載矛盾検出版
+Project Evaluator #21 | 信用・リスク整合版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -1843,7 +1843,8 @@ function evaluateProject(){
       "募集実績 1 件",
       "募集実績1件",
       "募集実績0件"
-    ]);
+    ]) ||
+    /募集実績[\s\S]{0,10}?[01]\s*件/.test(text);
 
   if(verified){
 
@@ -1854,6 +1855,7 @@ function evaluateProject(){
   if(unverified){
 
     client-=2;
+    risk+=1;
 
     warnings.push(
       "クライアント本人確認が未提出です。"
@@ -1864,6 +1866,7 @@ function evaluateProject(){
   if(ruleUnchecked){
 
     client-=1;
+    risk+=1;
 
     warnings.push(
       "発注ルールチェックが未回答です。"
@@ -1874,6 +1877,7 @@ function evaluateProject(){
   if(noReviews){
 
     client-=1;
+    risk+=1;
 
     warnings.push(
       "レビュー実績がありません。"
@@ -1884,6 +1888,7 @@ function evaluateProject(){
   if(littleHistory){
 
     client-=1;
+    risk+=1;
 
     warnings.push(
       "募集実績が少ないです。"
@@ -1951,10 +1956,13 @@ function evaluateProject(){
 
   }
 
+  /* 信頼度とリスクの最低整合ライン */
+
   if(client<=2){
-
-    risk+=1;
-
+    risk=Math.max(risk,7);
+  }
+  else if(client<=3){
+    risk=Math.max(risk,6);
   }
 
   risk=
@@ -2017,11 +2025,24 @@ function evaluateProject(){
     application.applicants>=20
   ){
 
+    risk+=1;
+
     warnings.push(
       "多数の応募がある一方、現時点で契約者0人です。"
     );
 
   }
+
+  /* 応募状況を反映した最終リスク整合性ガード */
+
+  if(client<=2){
+    risk=Math.max(risk,7);
+  }
+  else if(client<=3){
+    risk=Math.max(risk,6);
+  }
+
+  risk=clamp(risk,1,10);
 
   let unitMin=null;
   let unitMax=null;
@@ -2257,6 +2278,25 @@ function evaluateProject(){
     safetyAxis-=2;
 
   }
+
+  /* 安全性が低いのに低リスクと表示しない最終ガード */
+
+  if(safetyAxis<=2){
+    risk=Math.max(risk,7);
+  }
+  else if(safetyAxis<=3){
+    risk=Math.max(risk,6);
+  }
+
+  risk=clamp(risk,1,10);
+
+  safetyAxis=Math.min(
+    safetyAxis,
+    Math.round(
+      client*0.65+
+      (11-risk)*0.35
+    )
+  );
 
   profitAxis=
     clamp(
