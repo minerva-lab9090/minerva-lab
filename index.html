@@ -3,90 +3,90 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MINERVA LAB | 案件判定ツール #09</title>
+<title>MINERVA LAB | 案件判定ツール #10</title>
 
 <style>
-body {
-  font-family: Arial, "Noto Sans JP", sans-serif;
-  background: #f4f5f8;
-  margin: 0;
-  padding: 35px 18px;
-  color: #222;
+body{
+  font-family:Arial,"Noto Sans JP",sans-serif;
+  background:#f4f5f8;
+  margin:0;
+  padding:35px 18px;
+  color:#222;
 }
 
-.container {
-  max-width: 920px;
-  margin: auto;
-  background: #fff;
-  padding: 34px;
-  border-radius: 18px;
-  box-shadow: 0 8px 30px rgba(0,0,0,.08);
+.container{
+  max-width:980px;
+  margin:auto;
+  background:#fff;
+  padding:34px;
+  border-radius:18px;
+  box-shadow:0 8px 30px rgba(0,0,0,.08);
 }
 
-h1 { margin-bottom: 4px; }
+h1{margin-bottom:4px;}
 
-.subtitle {
-  color: #777;
-  margin-bottom: 28px;
+.subtitle{
+  color:#777;
+  margin-bottom:28px;
 }
 
-textarea {
-  width: 100%;
-  min-height: 300px;
-  padding: 16px;
-  box-sizing: border-box;
-  border: 1px solid #ccc;
-  border-radius: 12px;
-  font-size: 15px;
-  line-height: 1.6;
+textarea{
+  width:100%;
+  min-height:300px;
+  padding:16px;
+  box-sizing:border-box;
+  border:1px solid #ccc;
+  border-radius:12px;
+  font-size:15px;
+  line-height:1.6;
 }
 
-button {
-  width: 100%;
-  margin-top: 16px;
-  padding: 17px;
-  border: 0;
-  border-radius: 11px;
-  background: #222;
-  color: white;
-  font-size: 17px;
-  font-weight: bold;
-  cursor: pointer;
+button{
+  width:100%;
+  margin-top:16px;
+  padding:17px;
+  border:0;
+  border-radius:11px;
+  background:#222;
+  color:white;
+  font-size:17px;
+  font-weight:bold;
+  cursor:pointer;
 }
 
-.result {
+.result{
   display:none;
   margin-top:30px;
 }
 
-.typebox {
+.typebox{
   background:#edf3ff;
   border:1px solid #d9e4ff;
   padding:18px;
   border-radius:12px;
   margin-bottom:16px;
-  line-height:1.6;
+  line-height:1.7;
 }
 
-.grid {
+.grid{
   display:grid;
   grid-template-columns:repeat(2,1fr);
   gap:12px;
 }
 
-.card {
+.card{
   background:#fafafa;
   border:1px solid #eee;
   border-radius:12px;
   padding:16px;
 }
 
-.card strong {
+.card strong{
   display:block;
   margin-bottom:6px;
 }
 
-.decision {
+.decision{
   margin-top:18px;
   padding:20px;
   border-radius:12px;
@@ -94,64 +94,94 @@ button {
   font-weight:bold;
 }
 
-.green { background:#e5f7ed; color:#137840; }
-.yellow { background:#fff6d9; color:#806000; }
-.orange { background:#fff0df; color:#a65300; }
-.red { background:#fde7e7; color:#a51f1f; }
+.green{background:#e5f7ed;color:#137840;}
+.yellow{background:#fff6d9;color:#806000;}
+.orange{background:#fff0df;color:#a65300;}
+.red{background:#fde7e7;color:#a51f1f;}
 
-.section {
+.section{
   margin-top:22px;
   padding:20px;
   background:#fafafa;
   border-radius:12px;
 }
 
-.salary-box {
+.salary-box{
   display:grid;
   grid-template-columns:repeat(3,1fr);
   gap:12px;
   margin-top:14px;
 }
 
-.salary {
+.salary{
   padding:18px;
   border-radius:12px;
   text-align:center;
   border:1px solid #eee;
 }
 
-.salary.bad { background:#fff0f0; }
-.salary.normal { background:#fff8df; }
-.salary.good { background:#eaf8ef; }
+.salary.bad{background:#fff0f0;}
+.salary.normal{background:#fff8df;}
+.salary.good{background:#eaf8ef;}
 
-.salary strong {
+.salary strong{
   display:block;
   margin-bottom:8px;
 }
 
-.salary .money {
+.salary .money{
   font-size:22px;
   font-weight:bold;
 }
 
-ul {
+.status-row{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:12px;
+  margin-top:14px;
+}
+
+.status-card{
+  padding:16px;
+  border-radius:12px;
+  background:#fff;
+  border:1px solid #e8e8e8;
+}
+
+.ok{
+  color:#137840;
+  font-weight:bold;
+}
+
+.ng{
+  color:#a51f1f;
+  font-weight:bold;
+}
+
+.hold{
+  color:#806000;
+  font-weight:bold;
+}
+
+ul{
   padding-left:22px;
   line-height:1.8;
 }
 
-.notice {
+.notice{
   margin-top:20px;
   color:#777;
   font-size:12px;
 }
 
-@media(max-width:650px) {
+@media(max-width:650px){
   .grid,
-  .salary-box {
+  .salary-box,
+  .status-row{
     grid-template-columns:1fr;
   }
 
-  .container {
+  .container{
     padding:22px;
   }
 }
@@ -164,7 +194,7 @@ ul {
 
 <h1>MINERVA LAB</h1>
 <div class="subtitle">
-Project Evaluator #09 | 情報不足・報酬補正版
+Project Evaluator #10 | 収益性3条件判定版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -181,7 +211,32 @@ placeholder="クラウドワークス等の募集内容をできるだけ全文�
 <div class="typebox">
 <strong>🧠 自動判定した案件タイプ</strong><br>
 <span id="projectType"></span><br>
-<span id="timeModel"></span>
+<span id="timeModel"></span><br>
+<strong>💴 報酬タイプ：</strong>
+<span id="paymentType"></span>
+</div>
+
+<div class="section">
+<h3>🔎 収益性3条件</h3>
+
+<div class="status-row">
+
+<div class="status-card">
+<strong>💰 報酬額</strong>
+<div id="salaryStatus"></div>
+</div>
+
+<div class="status-card">
+<strong>📦 作業量</strong>
+<div id="quantityStatus"></div>
+</div>
+
+<div class="status-card">
+<strong>📅 納期</strong>
+<div id="deadlineStatus"></div>
+</div>
+
+</div>
 </div>
 
 <div class="grid">
@@ -319,16 +374,13 @@ function formatNumber(v){
   return Math.round(v).toLocaleString("ja-JP");
 }
 
-/* =========================
-   金額抽出
-========================= */
-
+/* 金額抽出 */
 function extractMoneyValues(text){
 
   const values=[];
+  let m;
 
   const manRegex=/(\d+(?:\.\d+)?)\s*万\s*円?/g;
-  let m;
 
   while((m=manRegex.exec(text))!==null){
     values.push(parseFloat(m[1])*10000);
@@ -346,10 +398,41 @@ function extractMoneyValues(text){
   return values;
 }
 
-/* =========================
-   応募人数など
-========================= */
+/* 報酬タイプ */
+function detectPaymentType(text){
 
+  if(contains(text,[
+    "月額",
+    "/月",
+    "月収",
+    "毎月",
+    "月3万円",
+    "月5万円",
+    "月報酬"
+  ])){
+    return "月額報酬";
+  }
+
+  if(contains(text,[
+    "1件",
+    "1枚",
+    "1投稿",
+    "1本",
+    "単価"
+  ])){
+    return "単価報酬";
+  }
+
+  if(contains(text,[
+    "固定報酬制"
+  ])){
+    return "案件総額の可能性";
+  }
+
+  return "判定困難";
+}
+
+/* 応募データ */
 function extractApplicationData(text){
 
   let applicants=null;
@@ -365,23 +448,17 @@ function extractApplicationData(text){
   m=text.match(/契約した人[\s\S]{0,30}?(\d+)\s*人/);
   if(m) contracts=parseInt(m[1]);
 
-  return {
-    applicants,
-    recruits,
-    contracts
-  };
+  return {applicants,recruits,contracts};
 }
 
-/* =========================
-   作業量抽出
-========================= */
-
+/* 作業量 */
 function extractQuantity(text){
 
   const patterns=[
     /月\s*(\d+)\s*枚/,
     /月\s*(\d+)\s*件/,
     /月\s*(\d+)\s*本/,
+    /月\s*(\d+)\s*投稿/,
     /(\d+)\s*枚\s*程/,
     /(\d+)\s*枚程度/,
     /(\d+)\s*件\s*程/,
@@ -392,6 +469,7 @@ function extractQuantity(text){
   ];
 
   for(const p of patterns){
+
     const m=text.match(p);
 
     if(m){
@@ -402,10 +480,7 @@ function extractQuantity(text){
   return null;
 }
 
-/* =========================
-   案件タイプ
-========================= */
-
+/* 案件タイプ */
 function detectProjectType(text){
 
   if(contains(text,[
@@ -416,7 +491,7 @@ function detectProjectType(text){
     "リール",
     "フィード投稿"
   ])){
-    return {
+    return{
       name:"SNS画像制作",
       fast:10,
       normal:20,
@@ -431,7 +506,7 @@ function detectProjectType(text){
     "背景調整",
     "色味調整"
   ])){
-    return {
+    return{
       name:"画像加工・編集",
       fast:10,
       normal:15,
@@ -444,7 +519,7 @@ function detectProjectType(text){
     "広告画像",
     "サムネイル"
   ])){
-    return {
+    return{
       name:"バナー・広告画像制作",
       fast:20,
       normal:40,
@@ -456,7 +531,7 @@ function detectProjectType(text){
     "ロゴ",
     "ロゴデザイン"
   ])){
-    return {
+    return{
       name:"ロゴ制作",
       fast:60,
       normal:120,
@@ -469,7 +544,7 @@ function detectProjectType(text){
     "ライティング",
     "ブログ記事"
   ])){
-    return {
+    return{
       name:"ライティング",
       fast:30,
       normal:60,
@@ -482,7 +557,7 @@ function detectProjectType(text){
     "文字入力",
     "入力作業"
   ])){
-    return {
+    return{
       name:"データ入力",
       fast:5,
       normal:10,
@@ -490,7 +565,7 @@ function detectProjectType(text){
     };
   }
 
-  return {
+  return{
     name:"一般デザイン・その他",
     fast:30,
     normal:60,
@@ -498,10 +573,7 @@ function detectProjectType(text){
   };
 }
 
-/* =========================
-   メイン評価
-========================= */
-
+/* メイン */
 function evaluateProject(){
 
   const text=
@@ -518,19 +590,23 @@ function evaluateProject(){
   const numbers=[];
 
   const projectType=detectProjectType(text);
+  const paymentType=detectPaymentType(text);
   const application=extractApplicationData(text);
   const quantity=extractQuantity(text);
   const moneyValues=extractMoneyValues(text);
 
   const maxMoney=
     moneyValues.length
-      ? Math.max(...moneyValues)
-      : 0;
+    ? Math.max(...moneyValues)
+    : 0;
+
+  const positiveValues=
+    moneyValues.filter(v=>v>0);
 
   const minMoney=
-    moneyValues.length
-      ? Math.min(...moneyValues.filter(v=>v>0))
-      : 0;
+    positiveValues.length
+    ? Math.min(...positiveValues)
+    : 0;
 
   let reward=5;
   let difficulty=5;
@@ -542,32 +618,23 @@ function evaluateProject(){
   let competition=5;
   let info=10;
 
-  /* =========================
-     情報不足チェック
-  ========================= */
-
+  /* 収益性3条件 */
+  const hasSalary=maxMoney>0;
   const hasQuantity=quantity!==null;
 
-  const hasUnitPrice=
+  const hasDeadline=
     contains(text,[
-      "1件",
-      "1枚",
-      "1本",
-      "単価",
-      "1投稿"
+      "納期",
+      "納品希望日",
+      "納品",
+      "締切",
+      "までに"
     ]);
 
   const hasRevision=
     contains(text,[
       "修正",
       "修正回数"
-    ]);
-
-  const hasDeadline=
-    contains(text,[
-      "納期",
-      "納品",
-      "締切"
     ]);
 
   const hasRights=
@@ -577,16 +644,17 @@ function evaluateProject(){
       "ポートフォリオ"
     ]);
 
+  /* 情報充足度 */
+
+  if(!hasSalary) info-=2;
   if(!hasQuantity) info-=2;
+  if(!hasDeadline) info-=2;
   if(!hasRevision) info-=1;
-  if(!hasDeadline) info-=1;
   if(!hasRights) info-=1;
 
   info=clamp(info,1,10);
 
-  /* =========================
-     報酬
-  ========================= */
+  /* 報酬 */
 
   if(maxMoney>=100000){
     reward=9;
@@ -610,28 +678,27 @@ function evaluateProject(){
     reward=4;
   }
 
-  /*
-    #09重要変更
-    高額でも作業量が分からなければ
-    報酬評価を確定しない
-  */
+  /* 重要補正 */
 
-  if(maxMoney>=30000 && !hasQuantity && !hasUnitPrice){
+  if(maxMoney>=30000 && !hasQuantity){
 
     reward=Math.min(reward,6);
 
     warnings.push(
-      "表示報酬は高めですが、作業量・単価が不明なため報酬評価を保留しています。"
-    );
-
-    checks.push(
-      "月の制作件数・枚数と、1件あたりの報酬を確認してください。"
+      "表示報酬は高めですが、作業量が不明なため報酬評価を保留しています。"
     );
   }
 
-  /* =========================
-     難易度
-  ========================= */
+  if(!hasDeadline){
+
+    reward=Math.min(reward,6);
+
+    warnings.push(
+      "納期が不明なため、報酬に対する作業負担を正確に判断できません。"
+    );
+  }
+
+  /* 難易度 */
 
   if(contains(text,[
     "初心者",
@@ -641,10 +708,7 @@ function evaluateProject(){
     "実績がない方"
   ])){
     difficulty-=2;
-
-    reasons.push(
-      "初心者・未経験でも応募可能です。"
-    );
+    reasons.push("初心者・未経験でも応募可能です。");
   }
 
   if(contains(text,[
@@ -658,9 +722,7 @@ function evaluateProject(){
 
   difficulty=clamp(difficulty,1,10);
 
-  /* =========================
-     AI適性
-  ========================= */
+  /* AI適性 */
 
   if(contains(text,[
     "canva",
@@ -673,10 +735,7 @@ function evaluateProject(){
     "レイアウト"
   ])){
     ai+=3;
-
-    reasons.push(
-      "AI・デジタルツール活用との相性が良好です。"
-    );
+    reasons.push("AI・デジタルツール活用との相性が良好です。");
   }
 
   if(contains(text,[
@@ -685,17 +744,12 @@ function evaluateProject(){
     "AI使用不可"
   ])){
     ai=1;
-
-    warnings.push(
-      "AI利用が禁止されている可能性があります。"
-    );
+    warnings.push("AI利用が禁止されている可能性があります。");
   }
 
   ai=clamp(ai,1,10);
 
-  /* =========================
-     作業負担
-  ========================= */
+  /* 作業負担 */
 
   if(quantity!==null){
 
@@ -733,17 +787,12 @@ function evaluateProject(){
     "柔軟"
   ])){
     workload-=1;
-
-    reasons.push(
-      "作業量やスケジュールに柔軟性があります。"
-    );
+    reasons.push("作業量やスケジュールに柔軟性があります。");
   }
 
   workload=clamp(workload,1,10);
 
-  /* =========================
-     クライアント信頼度
-  ========================= */
+  /* クライアント */
 
   if(contains(text,[
     "本人確認済み",
@@ -757,20 +806,14 @@ function evaluateProject(){
     "本人確認なし"
   ])){
     client-=2;
-
-    warnings.push(
-      "クライアント本人確認が未提出です。"
-    );
+    warnings.push("クライアント本人確認が未提出です。");
   }
 
   if(contains(text,[
     "発注ルールチェック未回答"
   ])){
     client-=1;
-
-    warnings.push(
-      "発注ルールチェックが未回答です。"
-    );
+    warnings.push("発注ルールチェックが未回答です。");
   }
 
   if(contains(text,[
@@ -779,17 +822,12 @@ function evaluateProject(){
     "募集実績1件"
   ])){
     client-=2;
-
-    warnings.push(
-      "クライアント実績がほとんどありません。"
-    );
+    warnings.push("クライアント実績がほとんどありません。");
   }
 
   client=clamp(client,1,10);
 
-  /* =========================
-     リスク
-  ========================= */
+  /* リスク */
 
   if(contains(text,[
     "LINE追加",
@@ -797,10 +835,7 @@ function evaluateProject(){
     "契約前に外部連絡"
   ])){
     risk+=3;
-
-    warnings.push(
-      "契約前の外部連絡誘導に注意してください。"
-    );
+    warnings.push("契約前の外部連絡誘導に注意してください。");
   }
 
   if(contains(text,[
@@ -810,10 +845,7 @@ function evaluateProject(){
     "初期費用"
   ])){
     risk+=5;
-
-    warnings.push(
-      "応募者側への金銭負担が発生する可能性があります。"
-    );
+    warnings.push("応募者側への金銭負担が発生する可能性があります。");
   }
 
   if(client<=2){
@@ -822,9 +854,7 @@ function evaluateProject(){
 
   risk=clamp(risk,1,10);
 
-  /* =========================
-     競争率
-  ========================= */
+  /* 競争率 */
 
   if(
     application.applicants!==null &&
@@ -837,21 +867,18 @@ function evaluateProject(){
       application.recruits;
 
     numbers.push(
-      "応募 " +
-      application.applicants +
-      "人 / 募集 " +
-      application.recruits +
-      "人で、単純競争率は約" +
-      ratio.toFixed(1) +
+      "応募 "+
+      application.applicants+
+      "人 / 募集 "+
+      application.recruits+
+      "人で、単純競争率は約"+
+      ratio.toFixed(1)+
       "倍です。"
     );
 
     if(ratio>=10){
       competition=2;
-
-      warnings.push(
-        "応募者が多く、競争率は高めです。"
-      );
+      warnings.push("応募者が多く、競争率は高めです。");
     }
     else if(ratio>=5){
       competition=4;
@@ -865,15 +892,10 @@ function evaluateProject(){
   }
 
   if(application.contracts===0){
-
-    warnings.push(
-      "多数の応募がある一方、現時点で契約者0人です。"
-    );
+    warnings.push("多数の応募がある一方、現時点で契約者0人です。");
   }
 
-  /* =========================
-     単価・時間計算
-  ========================= */
+  /* 単価・作業時間 */
 
   let unitMin=null;
   let unitMax=null;
@@ -889,12 +911,7 @@ function evaluateProject(){
   if(quantity && quantity>0 && maxMoney>0){
 
     unitMax=maxMoney/quantity;
-
-    if(minMoney>0){
-      unitMin=minMoney/quantity;
-    }else{
-      unitMin=unitMax;
-    }
+    unitMin=minMoney>0 ? minMoney/quantity : unitMax;
 
     totalFast=
       quantity*projectType.fast/60;
@@ -905,36 +922,41 @@ function evaluateProject(){
     totalSlow=
       quantity*projectType.slow/60;
 
+    const centerMoney=
+      minMoney && maxMoney
+      ? (minMoney+maxMoney)/2
+      : maxMoney;
+
     salaryFast=
-      maxMoney/totalFast;
+      centerMoney/totalFast;
 
     salaryNormal=
-      maxMoney/totalNormal;
+      centerMoney/totalNormal;
 
     salarySlow=
-      maxMoney/totalSlow;
+      centerMoney/totalSlow;
 
     numbers.push(
-      "作業量 " +
-      quantity +
-      "件に対し、実質単価は約" +
-      formatNumber(unitMin) +
-      "〜" +
-      formatNumber(unitMax) +
+      "作業量 "+
+      quantity+
+      "件に対し、実質単価は約"+
+      formatNumber(unitMin)+
+      "〜"+
+      formatNumber(unitMax)+
       "円/件です。"
     );
 
     numbers.push(
-      "標準" +
-      projectType.normal +
-      "分/件で計算すると、総作業時間は約" +
-      totalNormal.toFixed(1) +
+      "標準"+
+      projectType.normal+
+      "分/件で計算すると、総作業時間は約"+
+      totalNormal.toFixed(1)+
       "時間です。"
     );
 
     numbers.push(
-      "標準ケースの推定実質時給は約" +
-      formatNumber(salaryNormal) +
+      "標準ケースの推定実質時給は約"+
+      formatNumber(salaryNormal)+
       "円/時です。"
     );
 
@@ -952,10 +974,7 @@ function evaluateProject(){
     }
     else{
       efficiency=3;
-
-      warnings.push(
-        "標準ケースでは実質時給が低くなる可能性があります。"
-      );
+      warnings.push("標準ケースでは実質時給が低くなる可能性があります。");
     }
   }
   else{
@@ -965,33 +984,55 @@ function evaluateProject(){
     numbers.push(
       "作業量または単価情報が不足しているため、実質単価・総作業時間は算出できません。"
     );
-
-    checks.push(
-      "作業量を確認してから実質時給を判断してください。"
-    );
   }
 
-  /* =========================
-     情報不足ペナルティ
-  ========================= */
+  /* 3条件不足ペナルティ */
 
-  if(info<=6){
+  let revenueConditions=0;
 
-    warnings.push(
-      "重要な条件が不足しているため、募集額だけでは収益性を判断できません。"
+  if(hasSalary) revenueConditions++;
+  if(hasQuantity) revenueConditions++;
+  if(hasDeadline) revenueConditions++;
+
+  if(revenueConditions===3){
+
+    reasons.push(
+      "報酬額・作業量・納期の3条件が確認でき、収益性を比較しやすい案件です。"
     );
+
+  }
+  else if(revenueConditions===2){
 
     efficiency=Math.min(efficiency,5);
+
+    warnings.push(
+      "収益性を判断する3条件のうち1項目が不足しています。"
+    );
+
+  }
+  else{
+
+    efficiency=Math.min(efficiency,4);
+
+    reward=Math.min(reward,5);
+
+    warnings.push(
+      "報酬額・作業量・納期の情報が十分に揃っていません。"
+    );
   }
 
-  /* =========================
-     応募前チェック
-  ========================= */
+  /* 応募前チェック */
+
+  if(!hasQuantity){
+    checks.push("月または1案件あたりの制作件数を確認してください。");
+  }
+
+  if(!hasDeadline){
+    checks.push("納期または月内の制作スケジュールを確認してください。");
+  }
 
   if(!hasRevision){
-    checks.push(
-      "修正回数と追加修正料金を確認してください。"
-    );
+    checks.push("修正回数と追加修正料金を確認してください。");
   }
 
   if(!contains(text,[
@@ -999,60 +1040,43 @@ function evaluateProject(){
     "ChatGPT",
     "生成AI"
   ])){
-    checks.push(
-      "AI利用可否を事前確認した方が安全です。"
-    );
+    checks.push("AI利用可否を事前確認した方が安全です。");
   }
 
   if(!hasRights){
-    checks.push(
-      "成果物の著作権・ポートフォリオ掲載条件を確認してください。"
-    );
+    checks.push("成果物の著作権・ポートフォリオ掲載条件を確認してください。");
   }
 
-  /* =========================
-     総合点
-  ========================= */
+  /* 総合点 */
 
   let totalScore=Math.round(
 
       reward*1.8
-
     + ai*1.1
-
     + (11-difficulty)*1.2
-
     + (11-workload)*1.1
-
     + client*1.7
-
     + (11-risk)*1.3
-
     + efficiency*1.5
-
     + competition*0.9
-
     + info*0.7
 
   );
 
   totalScore=clamp(totalScore,0,100);
 
-  /*
-    信頼度1〜2かつ情報不足の場合、
-    高得点になりすぎない
-  */
+  /* 上限制御 */
 
   if(client<=2 && info<=6){
+    totalScore=Math.min(totalScore,59);
+  }
+
+  if(client===1){
     totalScore=Math.min(totalScore,64);
   }
 
-  /*
-    信頼度1の場合は応募推奨禁止
-  */
-
-  if(client===1){
-    totalScore=Math.min(totalScore,69);
+  if(revenueConditions<=1){
+    totalScore=Math.min(totalScore,59);
   }
 
   let decision="";
@@ -1080,21 +1104,64 @@ function evaluateProject(){
     cls="red";
   }
 
-  /* =========================
-     表示
-  ========================= */
+  /* 表示 */
 
   document.getElementById("projectType").textContent=
     projectType.name;
 
   document.getElementById("timeModel").textContent=
-    "想定時間：最速 " +
-    projectType.fast +
-    "分 / 標準 " +
-    projectType.normal +
-    "分 / 悲観 " +
-    projectType.slow +
+    "想定時間：最速 "+
+    projectType.fast+
+    "分 / 標準 "+
+    projectType.normal+
+    "分 / 悲観 "+
+    projectType.slow+
     "分";
+
+  document.getElementById("paymentType").textContent=
+    paymentType;
+
+  function setStatus(id,ok,text){
+
+    const el=document.getElementById(id);
+
+    if(ok===true){
+      el.className="ok";
+      el.textContent="確認済み："+text;
+    }
+    else if(ok===false){
+      el.className="ng";
+      el.textContent="不足："+text;
+    }
+    else{
+      el.className="hold";
+      el.textContent=text;
+    }
+  }
+
+  setStatus(
+    "salaryStatus",
+    hasSalary,
+    hasSalary
+      ? "報酬額あり"
+      : "報酬額不明"
+  );
+
+  setStatus(
+    "quantityStatus",
+    hasQuantity,
+    hasQuantity
+      ? quantity+"件"
+      : "作業量不明"
+  );
+
+  setStatus(
+    "deadlineStatus",
+    hasDeadline,
+    hasDeadline
+      ? "納期情報あり"
+      : "納期不明"
+  );
 
   document.getElementById("reward").textContent=reward;
   document.getElementById("difficulty").textContent=difficulty;
@@ -1178,21 +1245,15 @@ function evaluateProject(){
     "1件"+projectType.fast+"分想定";
 
   if(reasons.length===0){
-    reasons.push(
-      "明確な加点材料は検出されませんでした。"
-    );
+    reasons.push("明確な加点材料は検出されませんでした。");
   }
 
   if(warnings.length===0){
-    warnings.push(
-      "重大な注意ワードは検出されませんでした。"
-    );
+    warnings.push("重大な注意ワードは検出されませんでした。");
   }
 
   if(checks.length===0){
-    checks.push(
-      "大きな不足情報は検出されませんでした。"
-    );
+    checks.push("大きな不足情報は検出されませんでした。");
   }
 
   document.getElementById("reasons").innerHTML=
