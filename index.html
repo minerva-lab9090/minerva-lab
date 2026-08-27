@@ -1,113 +1,147 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MINERVA LAB | 案件判定ツール</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MINERVA LAB | AI案件判定ツール</title>
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f5f6fa;
-      margin: 0;
-      padding: 40px 20px;
-      color: #222;
-    }
+<style>
+body {
+    font-family: Arial, "Noto Sans JP", sans-serif;
+    background: #f5f6fa;
+    margin: 0;
+    padding: 40px 20px;
+    color: #222;
+}
 
-    .container {
-      max-width: 800px;
-      margin: auto;
-      background: white;
-      padding: 35px;
-      border-radius: 18px;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
-    }
+.container {
+    max-width: 800px;
+    margin: auto;
+    background: white;
+    padding: 35px;
+    border-radius: 18px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+}
 
-    h1 {
-      margin-bottom: 5px;
-    }
+h1 {
+    margin-bottom: 5px;
+}
 
-    .subtitle {
-      color: #777;
-      margin-bottom: 30px;
-    }
+.subtitle {
+    color: #777;
+    margin-bottom: 30px;
+}
 
-    textarea {
-      width: 100%;
-      height: 220px;
-      padding: 15px;
-      box-sizing: border-box;
-      border: 1px solid #ccc;
-      border-radius: 10px;
-      font-size: 16px;
-      resize: vertical;
-    }
+textarea {
+    width: 100%;
+    height: 220px;
+    box-sizing: border-box;
+    padding: 16px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    resize: vertical;
+}
 
-    button {
-      width: 100%;
-      margin-top: 15px;
-      padding: 15px;
-      border: none;
-      border-radius: 10px;
-      background: #222;
-      color: white;
-      font-size: 17px;
-      cursor: pointer;
-    }
+button {
+    width: 100%;
+    margin-top: 18px;
+    padding: 17px;
+    border: none;
+    border-radius: 10px;
+    background: #222;
+    color: white;
+    font-size: 17px;
+    font-weight: bold;
+    cursor: pointer;
+}
 
-    button:hover {
-      opacity: 0.85;
-    }
+button:hover {
+    background: #444;
+}
 
-    #result {
-      display: none;
-      margin-top: 30px;
-      padding: 25px;
-      background: #f8f8f8;
-      border-radius: 12px;
-    }
+.result {
+    display: none;
+    margin-top: 30px;
+    padding: 25px;
+    background: #fafafa;
+    border-radius: 14px;
+}
 
-    .score {
-      line-height: 2;
-    }
+.score {
+    margin: 12px 0;
+    font-size: 17px;
+}
 
-    .decision {
-      margin-top: 20px;
-      font-size: 24px;
-      font-weight: bold;
-    }
-  </style>
+.decision {
+    margin-top: 22px;
+    padding: 18px;
+    border-radius: 10px;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.reason {
+    margin-top: 20px;
+    line-height: 1.8;
+}
+
+.green {
+    background: #e8f8ef;
+    color: #137a42;
+}
+
+.yellow {
+    background: #fff7dc;
+    color: #8a6700;
+}
+
+.red {
+    background: #fdeaea;
+    color: #a82323;
+}
+
+.notice {
+    margin-top: 25px;
+    color: #777;
+    font-size: 13px;
+}
+</style>
 </head>
 
 <body>
 
 <div class="container">
 
-  <h1>MINERVA LAB</h1>
-  <div class="subtitle">AI Project Evaluator #01</div>
+<h1>MINERVA LAB</h1>
+<div class="subtitle">AI Project Evaluator #02</div>
 
-  <h2>案件内容を入力</h2>
+<h2>案件内容を入力</h2>
 
-  <textarea id="project"
-    placeholder="ここにクラウドワークスなどの案件内容を貼り付けてください。"></textarea>
+<textarea id="project"
+placeholder="ここにクラウドワークスなどの案件内容を貼り付けてください。"></textarea>
 
-  <button onclick="evaluateProject()">案件を分析する</button>
+<button onclick="evaluateProject()">案件を分析する</button>
 
-  <div id="result">
+<div id="result" class="result">
 
-    <h2>分析結果</h2>
+<h2>分析結果</h2>
 
-    <div class="score">
-      💰 報酬評価：<span id="reward"></span><br>
-      🛠 難易度：<span id="difficulty"></span><br>
-      🤖 AI活用度：<span id="ai"></span><br>
-      ⏱ 想定作業時間：<span id="time"></span><br>
-      ⚠️ リスク：<span id="risk"></span>
-    </div>
+<div class="score">💰 報酬評価：<span id="reward"></span> / 10</div>
+<div class="score">🛠 難易度：<span id="difficulty"></span> / 10</div>
+<div class="score">🤖 AI活用度：<span id="ai"></span> / 10</div>
+<div class="score">⚠️ リスク：<span id="risk"></span></div>
+<div class="score">📊 総合スコア：<span id="total"></span> / 100</div>
 
-    <div class="decision" id="decision"></div>
+<div id="decision" class="decision"></div>
 
-  </div>
+<div id="reason" class="reason"></div>
+
+</div>
+
+<div class="notice">
+※この判定は案件選びを補助するための参考評価です。
+</div>
 
 </div>
 
@@ -115,24 +149,149 @@
 
 function evaluateProject() {
 
-  const text = document.getElementById("project").value;
+    const text = document.getElementById("project").value;
 
-  if (text.trim() === "") {
-    alert("案件内容を入力してください");
-    return;
-  }
+    if (text.trim() === "") {
+        alert("案件内容を入力してください");
+        return;
+    }
 
-  // 現在はデモ判定。次の段階でAIと接続します。
-  document.getElementById("reward").textContent = "8 / 10";
-  document.getElementById("difficulty").textContent = "4 / 10";
-  document.getElementById("ai").textContent = "9 / 10";
-  document.getElementById("time").textContent = "約2時間";
-  document.getElementById("risk").textContent = "低";
+    let reward = 5;
+    let difficulty = 5;
+    let ai = 5;
+    let riskScore = 3;
 
-  document.getElementById("decision").textContent =
-    "🟢 応募推奨";
+    // 報酬判定
+    const moneyMatches = text.match(/[\d,]+円/g);
 
-  document.getElementById("result").style.display = "block";
+    if (moneyMatches) {
+
+        let maxMoney = 0;
+
+        moneyMatches.forEach(item => {
+
+            const value =
+                parseInt(item.replace(/,/g, "").replace("円", ""));
+
+            if (value > maxMoney) {
+                maxMoney = value;
+            }
+
+        });
+
+        if (maxMoney >= 50000) reward = 10;
+        else if (maxMoney >= 30000) reward = 9;
+        else if (maxMoney >= 10000) reward = 7;
+        else if (maxMoney >= 5000) reward = 6;
+        else if (maxMoney >= 1000) reward = 4;
+        else reward = 2;
+    }
+
+    // 難易度
+    if (/未経験|初心者歓迎|経験不問/.test(text)) {
+        difficulty -= 2;
+    }
+
+    if (/Illustrator|Photoshop|コーディング|JavaScript|プログラミング/.test(text)) {
+        difficulty += 2;
+    }
+
+    if (/動画編集|アニメーション|After Effects/.test(text)) {
+        difficulty += 2;
+    }
+
+    difficulty = Math.max(1, Math.min(10, difficulty));
+
+    // AI活用度
+    if (/AI|ChatGPT|生成AI|Canva/.test(text)) {
+        ai += 3;
+    }
+
+    if (/デザイン|文章|ライティング|画像|バナー|ロゴ/.test(text)) {
+        ai += 1;
+    }
+
+    ai = Math.max(1, Math.min(10, ai));
+
+    // リスク
+    if (/修正無制限|何度でも修正/.test(text)) {
+        riskScore += 3;
+    }
+
+    if (/著作権譲渡|権利譲渡/.test(text)) {
+        riskScore += 1;
+    }
+
+    if (/外部連絡|LINE|Telegram/.test(text)) {
+        riskScore += 3;
+    }
+
+    if (/テスト無料|無報酬/.test(text)) {
+        riskScore += 3;
+    }
+
+    riskScore = Math.min(10, riskScore);
+
+    let riskText = "低";
+
+    if (riskScore >= 7) {
+        riskText = "高";
+    } else if (riskScore >= 5) {
+        riskText = "中";
+    }
+
+    // 総合点
+    const total =
+        Math.round(
+            reward * 4 +
+            ai * 3 +
+            (10 - difficulty) * 2 +
+            (10 - riskScore)
+        );
+
+    let decision = "";
+    let className = "";
+    let reason = "";
+
+    if (total >= 70) {
+
+        decision = "🟢 応募推奨";
+        className = "green";
+
+        reason =
+        "報酬・難易度・AI活用とのバランスが比較的良い案件です。応募候補として詳しい条件を確認する価値があります。";
+
+    } else if (total >= 50) {
+
+        decision = "🟡 条件付き応募";
+        className = "yellow";
+
+        reason =
+        "応募可能ですが、作業量・修正回数・納期・納品形式などを確認してから判断するのがおすすめです。";
+
+    } else {
+
+        decision = "🔴 見送り候補";
+        className = "red";
+
+        reason =
+        "報酬に対する作業負担やリスクが高い可能性があります。他案件との比較をおすすめします。";
+    }
+
+    document.getElementById("reward").textContent = reward;
+    document.getElementById("difficulty").textContent = difficulty;
+    document.getElementById("ai").textContent = ai;
+    document.getElementById("risk").textContent = riskText;
+    document.getElementById("total").textContent = total;
+
+    const decisionBox = document.getElementById("decision");
+
+    decisionBox.textContent = decision;
+    decisionBox.className = "decision " + className;
+
+    document.getElementById("reason").textContent = reason;
+
+    document.getElementById("result").style.display = "block";
 }
 
 </script>
