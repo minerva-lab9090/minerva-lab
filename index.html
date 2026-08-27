@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MINERVA LAB | 案件判定ツール #29</title>
+<title>MINERVA LAB | 案件判定ツール #30</title>
 
 <style>
 
@@ -491,7 +491,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator #29 | 情報不足時の総合スコア補正版
+Project Evaluator #30 | 確認回答・再判定対応版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -503,6 +503,24 @@ placeholder="クラウドワークス等の募集内容をできるだけ全文�
 <button onclick="evaluateProject()">
 案件を詳しく分析する
 </button>
+
+
+<section class="card" id="followupPanel" style="margin-top:24px;">
+  <h2>🔄 クライアント回答を反映して再判定</h2>
+  <p class="sub">
+    確認文への回答が届いたら、回答内容をここへ貼り付けてください。
+    元の募集文と回答内容を合わせて再判定します。
+  </p>
+  <textarea id="clientReply" placeholder="例：
+・1件あたり15分程度です
+・修正は2回までです
+・ChatGPT / Canvaの利用可能です
+・ポートフォリオ掲載可能です"></textarea>
+  <button type="button" id="reEvaluateBtn" class="primary">
+    回答を反映して再判定
+  </button>
+  <p id="replyStatus" style="margin-top:10px;font-weight:700;"></p>
+</section>
 
 <div id="result" class="result">
 
@@ -3891,6 +3909,43 @@ function evaluateProject(){
 
 }
 
+</script>
+
+
+<script>
+(function(){
+  const btn=document.getElementById("reEvaluateBtn");
+  if(!btn) return;
+
+  btn.addEventListener("click",function(){
+    const reply=document.getElementById("clientReply").value.trim();
+    const status=document.getElementById("replyStatus");
+
+    if(!reply){
+      status.textContent="クライアントからの回答を入力してください。";
+      status.style.color="#c2410c";
+      return;
+    }
+
+    const jobText=document.getElementById("jobText");
+    if(!jobText){
+      status.textContent="募集文入力欄を取得できませんでした。";
+      status.style.color="#b91c1c";
+      return;
+    }
+
+    const separator="\n\n【クライアント確認回答】\n";
+    const base=jobText.value.split(separator)[0].trim();
+    jobText.value=base+separator+reply;
+
+    status.textContent="回答内容を募集条件へ反映しました。再判定します。";
+    status.style.color="#15803d";
+
+    if(typeof evaluateProject==="function"){
+      evaluateProject();
+    }
+  });
+})();
 </script>
 
 </body>
