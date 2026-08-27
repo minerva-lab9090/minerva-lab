@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MINERVA LAB | 案件判定ツール #26</title>
+<title>MINERVA LAB | 案件判定ツール #27</title>
 
 <style>
 
@@ -491,7 +491,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator #26 | 納期・作業量読み違い防止版
+Project Evaluator #27 | クライアント信頼度・リスク判定精度版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -1017,6 +1017,120 @@ function detectPaymentType(text){
 
   return "判定困難";
 
+}
+
+
+/* =========================
+   #27 クライアント信頼度・リスク判定精度
+   ・本人確認 / 発注ルール / レビュー / 募集実績を分離
+   ・高評価や十分な実績を加点
+   ・外部連絡は「契約前」の誘導を強く警戒
+   ・LINE等の単語があるだけでは即危険扱いしない
+========================= */
+function analyzeClientTrust(text){
+
+  const normalized=text.replace(/\s+/g," ");
+
+  const verified=
+    contains(normalized,[
+      "本人確認済み",
+      "本人確認提出済み"
+    ]);
+
+  const unverified=
+    contains(normalized,[
+      "本人確認未提出",
+      "本人確認なし"
+    ]);
+
+  const ruleChecked=
+    contains(normalized,[
+      "発注ルールチェック済み",
+      "発注ルールチェック回答済み"
+    ]);
+
+  const ruleUnchecked=
+    contains(normalized,[
+      "発注ルールチェック未回答"
+    ]);
+
+  let reviewCount=null;
+  let rating=null;
+  let orderHistory=null;
+
+  let m=normalized.match(/(?:評価|総合評価)\s*[:：]?\s*([0-5](?:\.\d+)?)/);
+  if(m) rating=parseFloat(m[1]);
+
+  m=normalized.match(/(\d+)\s*件のレビュー/);
+  if(m) reviewCount=parseInt(m[1]);
+
+  if(reviewCount===null && /0件のレビュー/.test(normalized)){
+    reviewCount=0;
+  }
+
+  m=normalized.match(/募集実績\s*[:：]?\s*(\d+)\s*件/);
+  if(m) orderHistory=parseInt(m[1]);
+
+  const externalService=
+    contains(normalized,[
+      "LINE",
+      "ライン",
+      "Telegram",
+      "テレグラム",
+      "Discord",
+      "Chatwork",
+      "チャットワーク"
+    ]);
+
+  const preContractExternal=
+    /(?:契約前|応募後すぐ|応募後)[\s\S]{0,35}?(?:LINE|ライン|Telegram|テレグラム|Discord|Chatwork|チャットワーク|外部(?:連絡|ツール|サービス))/i.test(normalized) ||
+    /(?:LINE追加|LINEで連絡|Telegram|テレグラム)[\s\S]{0,35}?(?:契約前|応募時|応募後)/i.test(normalized) ||
+    contains(normalized,[
+      "契約前に外部連絡",
+      "契約前の外部連絡",
+      "契約前にLINE",
+      "契約前にライン"
+    ]);
+
+  const postContractExternal=
+    /(?:契約後|仮払い後)[\s\S]{0,35}?(?:LINE|ライン|Telegram|テレグラム|Discord|Chatwork|チャットワーク|外部(?:連絡|ツール|サービス))/i.test(normalized);
+
+  const moneyRequest=
+    contains(normalized,[
+      "教材購入",
+      "教材を購入",
+      "スクール入会",
+      "スクールへの入会",
+      "登録料",
+      "初期費用",
+      "参加費",
+      "保証金",
+      "商品購入が必要",
+      "有料講座"
+    ]);
+
+  const unpaidTest=
+    contains(normalized,[
+      "無料テスト",
+      "無報酬テスト",
+      "テスト報酬なし",
+      "トライアル報酬なし"
+    ]);
+
+  return{
+    verified,
+    unverified,
+    ruleChecked,
+    ruleUnchecked,
+    reviewCount,
+    rating,
+    orderHistory,
+    externalService,
+    preContractExternal,
+    postContractExternal,
+    moneyRequest,
+    unpaidTest
+  };
 }
 
 function extractApplicationData(text){
@@ -2161,84 +2275,101 @@ function evaluateProject(){
       10
     );
 
+  const clientSignals=
+    analyzeClientTrust(text);
+
   const verified=
-    contains(text,[
-      "本人確認済み",
-      "本人確認提出済み"
-    ]);
+    clientSignals.verified;
 
   const unverified=
-    contains(text,[
-      "本人確認未提出",
-      "本人確認なし"
-    ]);
+    clientSignals.unverified;
 
   const ruleUnchecked=
-    contains(text,[
-      "発注ルールチェック未回答"
-    ]);
+    clientSignals.ruleUnchecked;
 
   const noReviews=
-    contains(text,[
-      "0件のレビュー"
-    ]);
+    clientSignals.reviewCount===0;
 
   const littleHistory=
-    contains(text,[
-      "募集実績 1 件",
-      "募集実績1件",
-      "募集実績0件"
-    ]) ||
-    /募集実績[\s\S]{0,10}?[01]\s*件/.test(text);
+    clientSignals.orderHistory!==null &&
+    clientSignals.orderHistory<=1;
 
   if(verified){
-
     client+=2;
+    reasons.push(
+      "クライアントの本人確認済み表記を検出しました。"
+    );
+  }
 
+  if(clientSignals.ruleChecked){
+    client+=1;
+  }
+
+  if(clientSignals.rating!==null){
+    if(clientSignals.rating>=4.8){
+      client+=2;
+      reasons.push(
+        "クライアント評価が高水準です（"+clientSignals.rating.toFixed(1)+" / 5）。"
+      );
+    }
+    else if(clientSignals.rating>=4.5){
+      client+=1;
+    }
+    else if(clientSignals.rating<3.5){
+      client-=2;
+      risk+=2;
+      warnings.push(
+        "クライアント評価が低めです（"+clientSignals.rating.toFixed(1)+" / 5）。レビュー内容の確認を推奨します。"
+      );
+    }
+  }
+
+  if(clientSignals.reviewCount!==null){
+    if(clientSignals.reviewCount>=20){
+      client+=1;
+    }
+    else if(clientSignals.reviewCount===0){
+      client-=1;
+      risk+=1;
+      warnings.push(
+        "レビュー実績がありません。"
+      );
+    }
+  }
+
+  if(clientSignals.orderHistory!==null){
+    if(clientSignals.orderHistory>=20){
+      client+=2;
+      reasons.push(
+        "募集実績が十分にあります（"+clientSignals.orderHistory+"件）。"
+      );
+    }
+    else if(clientSignals.orderHistory>=5){
+      client+=1;
+    }
+    else if(clientSignals.orderHistory<=1){
+      client-=1;
+      risk+=1;
+      warnings.push(
+        "募集実績が少ないです（"+clientSignals.orderHistory+"件）。"
+      );
+    }
   }
 
   if(unverified){
-
     client-=2;
     risk+=1;
-
     warnings.push(
       "クライアント本人確認が未提出です。"
     );
-
   }
 
   if(ruleUnchecked){
-
     client-=1;
     risk+=1;
-
     warnings.push(
       "発注ルールチェックが未回答です。"
     );
-
-  }
-
-  if(noReviews){
-
-    client-=1;
-    risk+=1;
-
-    warnings.push(
-      "レビュー実績がありません。"
-    );
-
-  }
-
-  if(littleHistory){
-
-    client-=1;
-    risk+=1;
-
-    warnings.push(
-      "募集実績が少ないです。"
-    );
-
   }
 
   client=
@@ -2249,60 +2380,49 @@ function evaluateProject(){
     );
 
   const externalContact=
-    contains(text,[
-      "LINE追加",
-      "LINEで連絡",
-      "Telegram",
-      "契約前に外部連絡"
-    ]);
+    clientSignals.preContractExternal;
 
   const moneyRequest=
-    contains(text,[
-      "教材購入",
-      "スクール入会",
-      "登録料",
-      "初期費用"
-    ]);
+    clientSignals.moneyRequest;
 
   const unpaidTest=
-    contains(text,[
-      "無料テスト",
-      "無報酬テスト",
-      "テスト報酬なし"
-    ]);
+    clientSignals.unpaidTest;
 
   if(externalContact){
-
     risk+=3;
-
     warnings.push(
-      "契約前の外部連絡誘導に注意してください。"
+      "契約前の外部連絡誘導を検出しました。プラットフォーム上のルールと安全性を確認してください。"
     );
-
+  }
+  else if(clientSignals.postContractExternal){
+    reasons.push(
+      "外部連絡ツールの記載がありますが、契約後・仮払い後の利用として認識したため、契約前誘導とは分離しました。"
+    );
+  }
+  else if(clientSignals.externalService){
+    checks.push(
+      "LINE等の外部ツール名があります。利用開始が契約後・仮払い後かを確認してください。"
+    );
   }
 
   if(moneyRequest){
-
     risk+=5;
-
+    client-=2;
     warnings.push(
-      "応募者側への金銭負担の可能性があります。"
+      "応募者側への金銭負担につながる表現を検出しました。教材・登録料・初期費用等の支払いは特に慎重に確認してください。"
     );
-
   }
 
   if(unpaidTest){
-
     risk+=3;
-
     warnings.push(
       "無報酬テストの可能性があります。"
     );
-
   }
 
-  /* 信頼度とリスクの最低整合ライン */
+  client=clamp(client,1,10);
 
+  /* 信頼度とリスクの最低整合ライン */
   if(client<=2){
     risk=Math.max(risk,7);
   }
