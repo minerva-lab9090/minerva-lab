@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MINERVA LAB | 案件判定ツール #18</title>
+<title>MINERVA LAB | 案件判定ツール #19</title>
 
 <style>
 
@@ -464,7 +464,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator #18 | 応募優先度ランク版
+Project Evaluator #19 | 矛盾防止版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -779,6 +779,60 @@ function contains(text,words){
   return words.some(
     w=>t.includes(w.toLowerCase())
   );
+}
+
+/* =========================
+   AI利用ルール
+   禁止表現を最優先で判定し、
+   「AI使用不可」を「AI使用可」と誤認しない
+========================= */
+
+function detectAiPolicy(text){
+
+  const prohibited=
+    contains(text,[
+      "AI禁止",
+      "AI利用禁止",
+      "AI使用禁止",
+      "生成AI禁止",
+      "生成AI利用禁止",
+      "生成AI使用禁止",
+      "AI使用不可",
+      "AI利用不可",
+      "生成AI使用不可",
+      "生成AI利用不可",
+      "ChatGPT禁止",
+      "ChatGPT使用不可",
+      "ChatGPT利用不可",
+      "AIでの作成不可",
+      "AIによる作成不可"
+    ]);
+
+  if(prohibited){
+    return "prohibited";
+  }
+
+  const allowed=
+    contains(text,[
+      "AI使用可",
+      "AI利用可",
+      "AI活用可",
+      "生成AI可",
+      "生成AI使用可",
+      "生成AI利用可",
+      "ChatGPT可",
+      "ChatGPT使用可",
+      "ChatGPT利用可",
+      "AI使用OK",
+      "AI利用OK"
+    ]);
+
+  if(allowed){
+    return "allowed";
+  }
+
+  return "unknown";
+
 }
 
 function formatNumber(v){
@@ -1456,6 +1510,9 @@ function evaluateProject(){
   const concreteUnitPrice=
     hasConcreteUnitPrice(text);
 
+  const aiPolicy=
+    detectAiPolicy(text);
+
   const maxMoney=
     moneyValues.length
       ? Math.max(...moneyValues)
@@ -1505,14 +1562,7 @@ function evaluateProject(){
     ]);
 
   const hasAiRule=
-    contains(text,[
-      "AI使用可",
-      "AI活用可",
-      "生成AI可",
-      "AI禁止",
-      "AI使用不可",
-      "ChatGPT可"
-    ]);
+    aiPolicy!=="unknown";
 
   if(!hasSalary){
     info-=2;
@@ -1630,6 +1680,7 @@ function evaluateProject(){
     );
 
   if(
+    aiPolicy==="allowed" &&
     contains(text,[
       "canva",
       "画像制作",
@@ -1649,18 +1700,16 @@ function evaluateProject(){
 
   }
 
-  if(
-    contains(text,[
-      "AI禁止",
-      "生成AI禁止",
-      "AI使用不可"
-    ])
-  ){
+  if(aiPolicy==="prohibited"){
 
     ai=1;
 
     warnings.push(
       "AI利用が禁止されています。"
+    );
+
+    checks.push(
+      "AIを使わずに、指定された方法だけで対応できるか確認してください。"
     );
 
   }
@@ -2232,9 +2281,13 @@ function evaluateProject(){
     "aiSummaryScore",
     "aiSummaryText",
     aiAxis,
-    aiAxis>=7
-      ? "AIやCanva等を活用して効率化しやすい案件です。"
-      : "AI利用可否を確認してください。"
+    aiPolicy==="prohibited"
+      ? "AI利用禁止が明記されています。AIを使わない前提で対応可否を判断してください。"
+      : aiPolicy==="allowed" && aiAxis>=7
+        ? "AI利用が明示的に許可されており、AIやデジタルツールで効率化しやすい案件です。"
+        : aiPolicy==="allowed"
+          ? "AI利用は許可されていますが、作業内容との相性も確認してください。"
+          : "AI利用可否が不明です。応募前に確認してください。"
   );
 
   let totalScore=
@@ -2447,7 +2500,8 @@ function evaluateProject(){
   if(
     totalScore>=80 &&
     safetyAxis>=7 &&
-    revenueConditions===3
+    revenueConditions===3 &&
+    aiPolicy==="allowed"
   ){
 
     action=
@@ -2512,6 +2566,44 @@ function evaluateProject(){
 
     applicationMode=
       "blocked";
+
+  }
+
+  /* =========================
+     AI判定の最終整合性ガード
+     禁止時に肯定的なAI文言を残さない
+  ========================= */
+
+  if(aiPolicy==="prohibited"){
+
+    for(let i=reasons.length-1;i>=0;i--){
+
+      if(
+        /AI.*(?:相性|効率化|活用)/i.test(
+          reasons[i]
+        )
+      ){
+        reasons.splice(i,1);
+      }
+
+    }
+
+    if(
+      !warnings.some(
+        x=>x.includes("AI利用が禁止")
+      )
+    ){
+      warnings.push(
+        "AI利用が禁止されています。"
+      );
+    }
+
+    if(
+      actionClass!=="action-red"
+    ){
+      actionDetail+=
+        " AI利用は禁止されています。AIを使わず対応できる場合に限って進めてください。";
+    }
 
   }
 
