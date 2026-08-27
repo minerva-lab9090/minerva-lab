@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MINERVA LAB | 案件判定ツール #22</title>
+<title>MINERVA LAB | 案件判定ツール #23</title>
 
 <style>
 
@@ -178,6 +178,13 @@ button:hover{
 .card strong{
   display:block;
   margin-bottom:6px;
+}
+
+.condition-count{
+  display:block;
+  margin-top:6px;
+  color:#666;
+  font-size:13px;
 }
 
 .rank-box{
@@ -464,7 +471,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator #22 | 報酬・実質単価整合版
+Project Evaluator #23 | 情報不足・応募可否整合版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -611,6 +618,7 @@ placeholder="クラウドワークス等の募集内容をできるだけ全文�
 <div class="card">
 <strong>🔎 情報充足度</strong>
 <span id="infoScore"></span> / 10
+<span id="conditionCount" class="condition-count"></span>
 </div>
 
 </div>
@@ -1079,6 +1087,10 @@ function detectConcreteDeadline(text){
 
   const patterns=[
 
+    /(?:納期|納品期限|締切|納品希望日)\s*[:：]?\s*\d{4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日/,
+
+    /(?:納期|納品期限|締切|納品希望日)\s*[:：]?\s*\d{1,2}\s*月\s*\d{1,2}\s*日/,
+
     /\d{4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日\s*(まで|納品|締切)/,
 
     /\d{1,2}\s*月\s*\d{1,2}\s*日\s*(まで|納品|締切)/,
@@ -1287,6 +1299,14 @@ function buildQuestionText(options){
 
   const questions=[];
 
+  if(!options.hasSalary){
+
+    questions.push(
+      "・具体的な報酬額と、その金額が適用される作業範囲"
+    );
+
+  }
+
   if(!options.hasQuantity){
 
     questions.push(
@@ -1305,6 +1325,7 @@ function buildQuestionText(options){
 
   if(
     !options.hasUnitPrice &&
+    !options.hasQuantity &&
     options.maxMoney>=30000
   ){
 
@@ -1589,6 +1610,19 @@ function evaluateProject(){
     aiPolicy==="allowed" ||
     aiPolicy==="prohibited";
 
+  const confirmedConditionCount=
+    [
+      hasSalary,
+      hasQuantity,
+      hasDeadline,
+      hasRevision,
+      hasAiRule,
+      hasRights
+    ].filter(Boolean).length;
+
+  const missingImportantCount=
+    6-confirmedConditionCount;
+
   if(!hasSalary){
     info-=2;
   }
@@ -1602,6 +1636,10 @@ function evaluateProject(){
   }
 
   if(!hasRevision){
+    info-=1;
+  }
+
+  if(!hasAiRule){
     info-=1;
   }
 
@@ -1622,6 +1660,16 @@ function evaluateProject(){
       1,
       10
     );
+
+  if(missingImportantCount>=2){
+
+    warnings.push(
+      "重要条件6項目のうち"+
+      missingImportantCount+
+      "項目が未確認です。"
+    );
+
+  }
 
   if(maxMoney>=50000){
 
@@ -2468,6 +2516,10 @@ function evaluateProject(){
       100
     );
 
+  if(missingImportantCount>=2){
+    totalScore=Math.min(totalScore,59);
+  }
+
   if(aiPolicy==="conflict"){
     totalScore=Math.min(totalScore,59);
   }
@@ -2729,6 +2781,41 @@ function evaluateProject(){
 
   }
 
+  /* 重要条件が複数不足している場合の応募防止ガード */
+
+  if(
+    missingImportantCount>=2 &&
+    actionClass!=="action-red"
+  ){
+
+    action=
+      "🟠 不足条件を確認してから判断";
+
+    actionDetail=
+      "重要条件6項目のうち"+
+      missingImportantCount+
+      "項目が未確認です。クライアントの回答が得られるまで応募を保留してください。";
+
+    actionClass=
+      "action-orange";
+
+    applicationMode=
+      "blocked";
+
+    decision=
+      "🟠 情報不足・確認必須";
+
+    cls="orange";
+
+    if(rank!=="D"){
+      rank="C";
+      rankTitle="不足条件を確認";
+      rankDetail="重要条件が複数不足しています。確認が完了するまで応募優先度は上げられません。";
+      rankClass="rank-c";
+    }
+
+  }
+
   /* =========================
      AI判定の最終整合性ガード
      禁止時に肯定的なAI文言を残さない
@@ -2967,6 +3054,12 @@ function evaluateProject(){
     info;
 
   document
+    .getElementById("conditionCount")
+    .textContent=
+    confirmedConditionCount+
+    "/6項目確認済み";
+
+  document
     .getElementById("total")
     .textContent=
     totalScore;
@@ -3139,6 +3232,7 @@ function evaluateProject(){
   const questionText=
     buildQuestionText({
 
+      hasSalary,
       hasQuantity,
       hasDeadline,
       hasUnitPrice:concreteUnitPrice,
@@ -3230,8 +3324,18 @@ function evaluateProject(){
     }
     else{
 
-      applicationNote.textContent=
-        "現在の判定では応募文を生成しません。まず不明条件の確認、または他案件との比較を優先してください。";
+      if(missingImportantCount>=2){
+
+        applicationNote.textContent=
+          "重要条件が複数不足しているため、応募文は生成しません。先にクライアントへの確認文を使用してください。";
+
+      }
+      else{
+
+        applicationNote.textContent=
+          "現在の判定では応募文を生成しません。まず不明条件の確認、または他案件との比較を優先してください。";
+
+      }
 
     }
 
