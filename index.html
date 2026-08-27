@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MINERVA LAB | 案件判定ツール #33</title>
+<title>MINERVA LAB | 案件判定ツール #34</title>
 
 <style>
 
@@ -491,7 +491,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator #33 | 回答認識・表現揺れ強化版
+Project Evaluator #34 | 数値条件・再計算強化版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -953,6 +953,14 @@ function extractMoneyValues(text){
 }
 
 
+/* =========================
+   #34 数値条件・再計算強化
+   ・クライアント確認回答にある「1商品につき1,000円」等を単価として認識
+   ・「月30商品」「月30画像」等を作業量として認識
+   ・1商品/1画像あたりの作業時間を再計算へ反映
+   ・募集文＋確認回答の統合テキストから月間報酬・総作業時間・実質時給を再計算
+========================= */
+
 /* #25 報酬・数量読み違い防止 */
 function analyzeCompensation(text){
   const normalized=text.replace(/[￥¥]/g,"円");
@@ -960,7 +968,7 @@ function analyzeCompensation(text){
   const unitValues=[], monthlyValues=[], totalValues=[], testValues=[];
   let m;
 
-  const unitRegex=/(?:1\s*(?:件|枚|本|投稿|記事|点)\s*(?:あたり|につき)?|(?:件|枚|本|投稿|記事|点)\s*単価|単価)\s*[:：]?\s*(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
+  const unitRegex=/(?:1\s*(?:件|枚|本|投稿|記事|点|商品|画像)\s*(?:あたり|につき)?|(?:件|枚|本|投稿|記事|点|商品|画像)\s*単価|単価)\s*[:：]?\s*(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
   while((m=unitRegex.exec(normalized))!==null) unitValues.push(toYen(m[1],m[2]));
 
   const monthlyRegex=/(?:月額(?:報酬)?|月収|月\s*報酬)\s*[:：]?\s*(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
@@ -1199,7 +1207,7 @@ function extractApplicationData(text){
 /* #26 納期・作業量読み違い防止 */
 function analyzeWorkloadSchedule(text){
   const normalized=text.replace(/\s+/g," ");
-  const unit="(?:件|枚|本|投稿|記事|点)";
+  const unit="(?:件|枚|本|投稿|記事|点|商品|画像)";
   const candidates=[];
   let m;
 
@@ -1288,23 +1296,33 @@ function extractQuantity(text){
     /月\s*(\d+)\s*件/,
     /月\s*(\d+)\s*本/,
     /月\s*(\d+)\s*投稿/,
+    /月\s*(\d+)\s*商品/,
+    /月\s*(\d+)\s*画像/,
 
     /週\s*(\d+)\s*枚/,
     /週\s*(\d+)\s*件/,
     /週\s*(\d+)\s*本/,
     /週\s*(\d+)\s*投稿/,
+    /週\s*(\d+)\s*商品/,
+    /週\s*(\d+)\s*画像/,
 
     /(\d+)\s*枚\s*(?:程度|程|前後)/,
     /(\d+)\s*件\s*(?:程度|程|前後)/,
     /(\d+)\s*本\s*(?:程度|程|前後)/,
+    /(\d+)\s*商品\s*(?:程度|程|前後)/,
+    /(\d+)\s*画像\s*(?:程度|程|前後)/,
 
     /合計\s*(\d+)\s*枚/,
     /合計\s*(\d+)\s*件/,
     /合計\s*(\d+)\s*本/,
+    /合計\s*(\d+)\s*商品/,
+    /合計\s*(\d+)\s*画像/,
 
     /(\d+)\s*枚作成/,
     /(\d+)\s*件作成/,
-    /(\d+)\s*本作成/
+    /(\d+)\s*本作成/,
+    /(\d+)\s*商品(?:作成|加工|対応)/,
+    /(\d+)\s*画像(?:作成|加工|対応)/
 
   ];
 
@@ -1345,6 +1363,8 @@ function hasConcreteUnitPrice(text){
     /1\s*本\s*(?:あたり|につき)?[^\d]{0,20}[\d,]+\s*円/,
 
     /1\s*投稿\s*(?:あたり|につき)?[^\d]{0,20}[\d,]+\s*円/,
+    /1\s*商品\s*(?:あたり|につき)?[^\d]{0,20}[\d,]+\s*円/,
+    /1\s*画像\s*(?:あたり|につき)?[^\d]{0,20}[\d,]+\s*円/,
 
     /単価[^\d]{0,20}[\d,]+\s*円/
 
@@ -1558,7 +1578,7 @@ function extractExplicitWorkTime(text){
 
   const normalized=text.replace(/\s+/g," ");
   const patterns=[
-    /(?:1\s*(?:件|枚|本|投稿|記事|画像|動画)\s*(?:あたり|につき)?|1制作\s*(?:あたり|につき)?)[^\d]{0,20}(\d+(?:\.\d+)?)\s*(分|時間)/i,
+    /(?:1\s*(?:件|枚|本|投稿|記事|商品|画像|動画)\s*(?:あたり|につき)?|1制作\s*(?:あたり|につき)?)[^\d]{0,20}(\d+(?:\.\d+)?)\s*(分|時間)/i,
     /(?:作業時間|制作時間|所要時間|目安時間)[^\d]{0,20}(\d+(?:\.\d+)?)\s*(分|時間)/i
   ];
 
@@ -1570,7 +1590,7 @@ function extractExplicitWorkTime(text){
       if(minutes>0 && minutes<=1440){
         return{
           minutes,
-          label:"募集文記載：約"+Math.round(minutes)+"分/件"
+          label:"募集文・確認回答：約"+Math.round(minutes)+"分/件"
         };
       }
     }
@@ -2574,7 +2594,7 @@ function evaluateProject(){
         fast:Math.max(1,explicitWorkTime.minutes*0.8),
         normal:explicitWorkTime.minutes,
         slow:explicitWorkTime.minutes*1.3,
-        source:"募集文記載"
+        source:"募集文・確認回答"
       }
     : projectType.confidenceKey!=="low"
       ? {
@@ -2646,7 +2666,7 @@ function evaluateProject(){
     );
 
     numbers.push(
-      (estimatedMinutes.source==="募集文記載" ? "募集文の工数を基準にした" : "案件タイプから推定した")+
+      (estimatedMinutes.source==="募集文・確認回答" ? "明記された工数を基準にした" : "案件タイプから推定した")+
       "標準ケースの推定時給は約"+
       formatNumber(salaryNormal)+
       "円/時です。"
