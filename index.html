@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MINERVA LAB | 案件判定ツール #21</title>
+<title>MINERVA LAB | 案件判定ツール #22</title>
 
 <style>
 
@@ -464,7 +464,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator #21 | 信用・リスク整合版
+Project Evaluator #22 | 報酬・実質単価整合版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -2138,6 +2138,62 @@ function evaluateProject(){
 
     }
 
+    /* 総額より実質時給を優先して報酬点を補正 */
+
+    if(salaryNormal<1000){
+
+      reward=Math.min(reward,3);
+
+      warnings.push(
+        "標準ケースの推定時給が1,000円未満です。総額だけでなく実作業時間を重視してください。"
+      );
+
+    }
+    else if(salaryNormal<1200){
+
+      reward=Math.min(reward,5);
+
+      warnings.push(
+        "標準ケースの推定時給が1,200円未満です。表示報酬に対して作業量が多い可能性があります。"
+      );
+
+    }
+    else if(salaryNormal<1500){
+
+      reward=Math.min(reward,6);
+
+    }
+    else if(salaryNormal<2000){
+
+      reward=Math.min(reward,7);
+
+    }
+
+    if(
+      salarySlow<1000 &&
+      salaryNormal>=1000
+    ){
+
+      warnings.push(
+        "作業が長引いた場合、推定時給が1,000円未満になる可能性があります。"
+      );
+
+    }
+
+    if(
+      totalNormal>=40 &&
+      salaryNormal<1500
+    ){
+
+      reward=Math.min(reward,5);
+      efficiency=Math.min(efficiency,4);
+
+      warnings.push(
+        "標準ケースでも総作業時間が40時間以上と見込まれます。"
+      );
+
+    }
+
   }
   else{
 
@@ -2231,6 +2287,22 @@ function evaluateProject(){
     Math.round(
       (reward+efficiency+info)/3
     );
+
+  /* 低い推定時給で収益性が高評価にならない最終ガード */
+
+  if(salaryNormal!==null){
+
+    if(salaryNormal<1000){
+      profitAxis=Math.min(profitAxis,4);
+    }
+    else if(salaryNormal<1200){
+      profitAxis=Math.min(profitAxis,5);
+    }
+    else if(salaryNormal<1500){
+      profitAxis=Math.min(profitAxis,6);
+    }
+
+  }
 
   let abilityAxis=
     Math.round(
@@ -2331,7 +2403,9 @@ function evaluateProject(){
     "profitScore",
     "profitText",
     profitAxis,
-    profitAxis>=7
+    salaryNormal!==null && salaryNormal<1200
+      ? "推定時給が低いため、表示されている報酬総額ほど収益性は高くありません。"
+      : profitAxis>=7
       ? "収益性は比較的良好です。"
       : "単価・作業量・納期などの確認が必要です。"
   );
