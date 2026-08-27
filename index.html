@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MINERVA LAB | 案件判定ツール #25</title>
+<title>MINERVA LAB | 案件判定ツール #26</title>
 
 <style>
 
@@ -491,7 +491,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator #25 | 報酬・数量読み違い防止版
+Project Evaluator #26 | 納期・作業量読み違い防止版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -1060,6 +1060,91 @@ function extractApplicationData(text){
 
 }
 
+
+/* #26 納期・作業量読み違い防止 */
+function analyzeWorkloadSchedule(text){
+  const normalized=text.replace(/\s+/g," ");
+  const unit="(?:件|枚|本|投稿|記事|点)";
+  const candidates=[];
+  let m;
+
+  const add=(value,period,raw)=>{
+    value=parseInt(value);
+    if(!value || value<1 || value>10000) return;
+    let monthly=null;
+    if(period==="day") monthly=value*22;
+    if(period==="week") monthly=value*4.33;
+    if(period==="month") monthly=value;
+    if(period==="total") monthly=null;
+    candidates.push({value,period,monthly,raw});
+  };
+
+  const patterns=[
+    {re:new RegExp("(?:1日|日)[あたりにつき\\s]*?(\\d+)\\s*"+unit,"g"), period:"day"},
+    {re:new RegExp("(?:週|1週間)[あたりにつき\\s]*?(\\d+)\\s*"+unit,"g"), period:"week"},
+    {re:new RegExp("(?:月|1か月|1ヶ月|1カ月)[あたりにつき\\s]*?(\\d+)\\s*"+unit,"g"), period:"month"},
+    {re:new RegExp("(\\d+)\\s*"+unit+"\\s*\\/\\s*日","g"), period:"day"},
+    {re:new RegExp("(\\d+)\\s*"+unit+"\\s*\\/\\s*週","g"), period:"week"},
+    {re:new RegExp("(\\d+)\\s*"+unit+"\\s*\\/\\s*月","g"), period:"month"},
+    {re:new RegExp("合計\\s*(\\d+)\\s*"+unit,"g"), period:"total"}
+  ];
+
+  for(const p of patterns){
+    while((m=p.re.exec(normalized))!==null) add(m[1],p.period,m[0]);
+  }
+
+  // 「月30件程度」のような既存表現も拾う
+  const loose=[
+    {re:new RegExp("月\\s*(\\d+)\\s*"+unit+"\\s*(?:程度|程|前後)?","g"),period:"month"},
+    {re:new RegExp("週\\s*(\\d+)\\s*"+unit+"\\s*(?:程度|程|前後)?","g"),period:"week"},
+    {re:new RegExp("1日\\s*(\\d+)\\s*"+unit+"\\s*(?:程度|程|前後)?","g"),period:"day"}
+  ];
+  for(const p of loose){
+    while((m=p.re.exec(normalized))!==null){
+      if(!candidates.some(x=>x.raw===m[0])) add(m[1],p.period,m[0]);
+    }
+  }
+
+  const priority={month:4,week:3,day:2,total:1};
+  candidates.sort((a,b)=>(priority[b.period]||0)-(priority[a.period]||0));
+  const primary=candidates[0]||null;
+
+  const deadline=detectConcreteDeadline(normalized);
+  let deadlineKind="unknown", deadlineValue=null, deadlineLabel=deadline.label;
+
+  m=normalized.match(/(?:1\s*件|各\s*件|1\s*本|1\s*枚)[\s\S]{0,25}?(\d+)\s*(営業日|日|時間)以内/);
+  if(!m) m=normalized.match(/(?:納期|納品期限|締切)[\s\S]{0,20}?(\d+)\s*(営業日|日|時間)以内/);
+  if(m){
+    deadlineKind="per_item";
+    deadlineValue=parseInt(m[1]);
+    deadlineLabel="1件ごとの納期："+m[1]+m[2]+"以内";
+  }else if(/毎週\s*(?:月|火|水|木|金|土|日)曜/.test(normalized)){
+    deadlineKind="weekly";
+    deadlineLabel="週次の固定納期あり";
+  }else if(/毎月\s*\d{1,2}\s*日/.test(normalized)){
+    deadlineKind="monthly";
+    deadlineLabel="月次の固定納期あり";
+  }else if(deadline.concrete){
+    deadlineKind="fixed";
+  }
+
+  return{
+    candidates, primary,
+    quantity: primary ? primary.value : null,
+    period: primary ? primary.period : null,
+    monthlyQuantity: primary ? primary.monthly : null,
+    deadlineKind, deadlineValue, deadlineLabel,
+    concreteDeadline: deadline
+  };
+}
+
+function workloadPeriodLabel(period){
+  return period==="day" ? "1日あたり" :
+         period==="week" ? "1週間あたり" :
+         period==="month" ? "1か月あたり" :
+         period==="total" ? "案件全体" : "";
+}
+
 function extractQuantity(text){
 
   const patterns=[
@@ -1439,7 +1524,9 @@ function buildQuestionText(options){
   if(!options.hasDeadline){
 
     questions.push(
-      "・1回ごとの納品期限や制作スケジュール"
+      options.workloadPeriod && options.workloadPeriod!=="total"
+        ? "・継続案件の納品ペース（1件ごとの期限、または週・月ごとの締切）"
+        : "・1回ごとの納品期限や制作スケジュール"
     );
 
   }
@@ -1681,8 +1768,13 @@ function evaluateProject(){
   const application=
     extractApplicationData(text);
 
+  const workloadSchedule=
+    analyzeWorkloadSchedule(text);
+
   const quantity=
-    extractQuantity(text);
+    workloadSchedule.quantity!==null
+      ? workloadSchedule.quantity
+      : extractQuantity(text);
 
   const moneyValues=
     compensation.max>0
@@ -1690,7 +1782,7 @@ function evaluateProject(){
       : [];
 
   const concreteDeadline=
-    detectConcreteDeadline(text);
+    workloadSchedule.concreteDeadline;
 
   const concreteUnitPrice=
     hasConcreteUnitPrice(text);
@@ -1701,11 +1793,16 @@ function evaluateProject(){
   const maxMoney=compensation.max;
   const minMoney=compensation.min;
 
+  const calculationQuantity=
+    workloadSchedule.monthlyQuantity!==null
+      ? workloadSchedule.monthlyQuantity
+      : quantity;
+
   const estimatedRewardMax=
-    compensation.basis==="unit" && quantity ? maxMoney*quantity : maxMoney;
+    compensation.basis==="unit" && calculationQuantity ? maxMoney*calculationQuantity : maxMoney;
 
   const estimatedRewardMin=
-    compensation.basis==="unit" && quantity ? minMoney*quantity : minMoney;
+    compensation.basis==="unit" && calculationQuantity ? minMoney*calculationQuantity : minMoney;
 
   const rewardBasisMax=estimatedRewardMax;
 
@@ -1726,11 +1823,33 @@ function evaluateProject(){
     warnings.push("テスト・トライアル報酬を検出しました。本契約の報酬とは分離して判定しています。");
   }
 
-  if(compensation.basis==="unit" && quantity){
+  if(compensation.basis==="unit" && calculationQuantity){
+    const qtyLabel=workloadSchedule.monthlyQuantity!==null
+      ? "月間換算"+Math.round(calculationQuantity*10)/10+"件"
+      : "数量"+calculationQuantity+"件";
     numbers.push(
-      "単価報酬として認識し、数量"+quantity+"件を掛けた想定報酬総額は約"+
-      formatNumber(estimatedRewardMin)+"〜"+formatNumber(estimatedRewardMax)+"円です。"
+      "単価報酬として認識し、"+qtyLabel+"を基準にした想定報酬総額は約"+
+      (estimatedRewardMin===estimatedRewardMax
+        ? formatNumber(estimatedRewardMax)
+        : formatNumber(estimatedRewardMin)+"〜"+formatNumber(estimatedRewardMax))+"円です。"
     );
+  }
+
+  if(workloadSchedule.primary){
+    numbers.push(
+      "作業量は「"+workloadPeriodLabel(workloadSchedule.period)+
+      workloadSchedule.quantity+"件」として認識し、納期とは分離して判定しています。"
+    );
+  }
+
+  if(workloadSchedule.monthlyQuantity!==null && workloadSchedule.period!=="month"){
+    numbers.push(
+      "作業量を月間換算すると約"+Math.round(workloadSchedule.monthlyQuantity*10)/10+"件です。"
+    );
+  }
+
+  if(workloadSchedule.deadlineKind!=="unknown"){
+    numbers.push("納期判定："+workloadSchedule.deadlineLabel+"。");
   }
 
   if(compensation.basis==="unknown" && hasSalary){
@@ -1742,6 +1861,16 @@ function evaluateProject(){
 
   const hasDeadline=
     concreteDeadline.concrete;
+
+  if(workloadSchedule.period==="day" && workloadSchedule.monthlyQuantity>=100){
+    warnings.push("日次の作業量を月間換算すると件数が多いため、継続対応できる工数か確認が必要です。");
+  }
+
+  if(workloadSchedule.deadlineKind==="per_item" &&
+     workloadSchedule.deadlineValue!==null &&
+     workloadSchedule.deadlineValue<=1){
+    warnings.push("1件ごとの納期が短めです。同時進行件数と修正対応を含めたスケジュール確認を推奨します。");
+  }
 
   const hasRevision=
     contains(text,[
@@ -1972,19 +2101,24 @@ function evaluateProject(){
       10
     );
 
-  if(quantity!==null){
+  const workloadQuantity=
+    workloadSchedule.monthlyQuantity!==null
+      ? workloadSchedule.monthlyQuantity
+      : quantity;
 
-    if(quantity>=100){
+  if(workloadQuantity!==null){
+
+    if(workloadQuantity>=100){
 
       workload+=3;
 
     }
-    else if(quantity>=50){
+    else if(workloadQuantity>=50){
 
       workload+=2;
 
     }
-    else if(quantity>=20){
+    else if(workloadQuantity>=20){
 
       workload+=1;
 
@@ -2290,8 +2424,8 @@ function evaluateProject(){
   }
 
   if(
-    quantity &&
-    quantity>0 &&
+    calculationQuantity &&
+    calculationQuantity>0 &&
     maxMoney>0 &&
     canEstimateTime &&
     canEstimateMoney
@@ -2301,28 +2435,28 @@ function evaluateProject(){
       unitMax=maxMoney;
       unitMin=minMoney>0 ? minMoney : unitMax;
     }else{
-      unitMax=maxMoney/quantity;
-      unitMin=minMoney>0 ? minMoney/quantity : unitMax;
+      unitMax=maxMoney/calculationQuantity;
+      unitMin=minMoney>0 ? minMoney/calculationQuantity : unitMax;
     }
 
     totalFast=
-      quantity*
+      calculationQuantity*
       estimatedMinutes.fast/
       60;
 
     totalNormal=
-      quantity*
+      calculationQuantity*
       estimatedMinutes.normal/
       60;
 
     totalSlow=
-      quantity*
+      calculationQuantity*
       estimatedMinutes.slow/
       60;
 
     const centerMoney=
       compensation.basis==="unit"
-        ? ((unitMin+unitMax)/2)*quantity
+        ? ((unitMin+unitMax)/2)*calculationQuantity
         : (minMoney && maxMoney ? (minMoney+maxMoney)/2 : maxMoney);
 
     salaryFast=
@@ -3198,7 +3332,12 @@ function evaluateProject(){
     "quantityStatus",
     hasQuantity ? "ok":"ng",
     hasQuantity
-      ? quantity+"件"
+      ? (workloadSchedule.primary
+          ? workloadPeriodLabel(workloadSchedule.period)+quantity+"件"+
+            (workloadSchedule.monthlyQuantity!==null && workloadSchedule.period!=="month"
+              ? "（月換算 約"+Math.round(workloadSchedule.monthlyQuantity*10)/10+"件）"
+              : "")
+          : quantity+"件")
       : "具体的な作業量不明"
   );
 
@@ -3207,7 +3346,9 @@ function evaluateProject(){
     setStatus(
       "deadlineStatus",
       "ok",
-      concreteDeadline.label
+      workloadSchedule.deadlineKind!=="unknown"
+        ? workloadSchedule.deadlineLabel
+        : concreteDeadline.label
     );
 
   }
@@ -3455,6 +3596,7 @@ function evaluateProject(){
       compensationBasis:compensation.basis,
       hasQuantity,
       hasDeadline,
+      workloadPeriod:workloadSchedule.period,
       hasWorkTime,
       hasUnitPrice:concreteUnitPrice,
       hasRevision,
