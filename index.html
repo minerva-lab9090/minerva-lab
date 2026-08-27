@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MINERVA LAB | 案件判定ツール #24</title>
+<title>MINERVA LAB | 案件判定ツール #25</title>
 
 <style>
 
@@ -491,7 +491,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator #24 | 案件タイプ・工数判定精度版
+Project Evaluator #25 | 報酬・数量読み違い防止版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -929,6 +929,51 @@ function extractMoneyValues(text){
 
   return values;
 
+}
+
+
+/* #25 報酬・数量読み違い防止 */
+function analyzeCompensation(text){
+  const normalized=text.replace(/[￥¥]/g,"円");
+  const toYen=(num,man)=>Math.round(parseFloat(String(num).replace(/,/g,""))*(man ? 10000 : 1));
+  const unitValues=[], monthlyValues=[], totalValues=[], testValues=[];
+  let m;
+
+  const unitRegex=/(?:1\s*(?:件|枚|本|投稿|記事|点)\s*(?:あたり|につき)?|(?:件|枚|本|投稿|記事|点)\s*単価|単価)\s*[:：]?\s*(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
+  while((m=unitRegex.exec(normalized))!==null) unitValues.push(toYen(m[1],m[2]));
+
+  const monthlyRegex=/(?:月額(?:報酬)?|月収|月\s*報酬)\s*[:：]?\s*(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
+  while((m=monthlyRegex.exec(normalized))!==null) monthlyValues.push(toYen(m[1],m[2]));
+
+  const testRegex=/(?:テスト|トライアル|お試し)[\s\S]{0,20}?(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
+  while((m=testRegex.exec(normalized))!==null) testValues.push(toYen(m[1],m[2]));
+
+  const totalRegex=/(?:固定報酬制|契約金額|報酬総額|案件総額|予算)\s*[:：]?\s*(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
+  while((m=totalRegex.exec(normalized))!==null) totalValues.push(toYen(m[1],m[2]));
+
+  const all=extractMoneyValues(normalized);
+  const excluded=[...unitValues,...monthlyValues,...totalValues,...testValues];
+  let basis="unknown", values=[];
+
+  if(unitValues.length){ basis="unit"; values=unitValues; }
+  else if(monthlyValues.length){ basis="monthly"; values=monthlyValues; }
+  else if(totalValues.length){ basis="total"; values=totalValues; }
+  else{
+    const remaining=[...all];
+    for(const x of excluded){
+      const i=remaining.indexOf(x);
+      if(i>=0) remaining.splice(i,1);
+    }
+    if(remaining.length) values=remaining;
+  }
+
+  const positive=values.filter(v=>v>0);
+  const min=positive.length ? Math.min(...positive) : 0;
+  const max=positive.length ? Math.max(...positive) : 0;
+  let label=basis==="unit" ? "単価報酬" : basis==="monthly" ? "月額報酬" : basis==="total" ? "案件総額" : "判定困難";
+  if(testValues.length) label+="（テスト報酬は別枠で検出）";
+
+  return{basis,label,min,max,unitValues,monthlyValues,totalValues,testValues};
 }
 
 function detectPaymentType(text){
@@ -1375,6 +1420,14 @@ function buildQuestionText(options){
 
   }
 
+  if(options.compensationBasis==="unknown" && options.hasSalary){
+
+    questions.push(
+      "・記載されている金額が、月額・1件あたりの単価・案件全体の総額のどれに該当するか"
+    );
+
+  }
+
   if(!options.hasQuantity){
 
     questions.push(
@@ -1619,8 +1672,11 @@ function evaluateProject(){
   const hasWorkTime=
     explicitWorkTime!==null;
 
+  const compensation=
+    analyzeCompensation(text);
+
   const paymentType=
-    detectPaymentType(text);
+    compensation.label;
 
   const application=
     extractApplicationData(text);
@@ -1629,7 +1685,9 @@ function evaluateProject(){
     extractQuantity(text);
 
   const moneyValues=
-    extractMoneyValues(text);
+    compensation.max>0
+      ? [compensation.min,compensation.max].filter(v=>v>0)
+      : [];
 
   const concreteDeadline=
     detectConcreteDeadline(text);
@@ -1640,18 +1698,16 @@ function evaluateProject(){
   const aiPolicy=
     detectAiPolicy(text);
 
-  const maxMoney=
-    moneyValues.length
-      ? Math.max(...moneyValues)
-      : 0;
+  const maxMoney=compensation.max;
+  const minMoney=compensation.min;
 
-  const positiveValues=
-    moneyValues.filter(v=>v>0);
+  const estimatedRewardMax=
+    compensation.basis==="unit" && quantity ? maxMoney*quantity : maxMoney;
 
-  const minMoney=
-    positiveValues.length
-      ? Math.min(...positiveValues)
-      : 0;
+  const estimatedRewardMin=
+    compensation.basis==="unit" && quantity ? minMoney*quantity : minMoney;
+
+  const rewardBasisMax=estimatedRewardMax;
 
   let reward=5;
   let difficulty=5;
@@ -1665,6 +1721,21 @@ function evaluateProject(){
 
   const hasSalary=
     maxMoney>0;
+
+  if(compensation.testValues.length){
+    warnings.push("テスト・トライアル報酬を検出しました。本契約の報酬とは分離して判定しています。");
+  }
+
+  if(compensation.basis==="unit" && quantity){
+    numbers.push(
+      "単価報酬として認識し、数量"+quantity+"件を掛けた想定報酬総額は約"+
+      formatNumber(estimatedRewardMin)+"〜"+formatNumber(estimatedRewardMax)+"円です。"
+    );
+  }
+
+  if(compensation.basis==="unknown" && hasSalary){
+    warnings.push("金額は検出しましたが、月額・単価・案件総額のどれかを確定できません。報酬の適用範囲を確認してください。");
+  }
 
   const hasQuantity=
     quantity!==null;
@@ -1763,22 +1834,22 @@ function evaluateProject(){
 
   }
 
-  if(maxMoney>=50000){
+  if(rewardBasisMax>=50000){
 
     reward=9;
 
   }
-  else if(maxMoney>=30000){
+  else if(rewardBasisMax>=30000){
 
     reward=8;
 
   }
-  else if(maxMoney>=10000){
+  else if(rewardBasisMax>=10000){
 
     reward=6;
 
   }
-  else if(maxMoney>0){
+  else if(rewardBasisMax>0){
 
     reward=3;
 
@@ -2212,21 +2283,27 @@ function evaluateProject(){
       : null;
 
   const canEstimateTime=estimatedMinutes!==null;
+  const canEstimateMoney=compensation.basis!=="unknown";
+
+  if(hasSalary && compensation.basis==="unknown"){
+    checks.push("記載金額が月額・1件単価・案件総額のどれに当たるか確認してください。");
+  }
 
   if(
     quantity &&
     quantity>0 &&
     maxMoney>0 &&
-    canEstimateTime
+    canEstimateTime &&
+    canEstimateMoney
   ){
 
-    unitMax=
-      maxMoney/quantity;
-
-    unitMin=
-      minMoney>0
-        ? minMoney/quantity
-        : unitMax;
+    if(compensation.basis==="unit"){
+      unitMax=maxMoney;
+      unitMin=minMoney>0 ? minMoney : unitMax;
+    }else{
+      unitMax=maxMoney/quantity;
+      unitMin=minMoney>0 ? minMoney/quantity : unitMax;
+    }
 
     totalFast=
       quantity*
@@ -2244,9 +2321,9 @@ function evaluateProject(){
       60;
 
     const centerMoney=
-      minMoney && maxMoney
-        ? (minMoney+maxMoney)/2
-        : maxMoney;
+      compensation.basis==="unit"
+        ? ((unitMin+unitMax)/2)*quantity
+        : (minMoney && maxMoney ? (minMoney+maxMoney)/2 : maxMoney);
 
     salaryFast=
       centerMoney/totalFast;
@@ -3375,6 +3452,7 @@ function evaluateProject(){
     buildQuestionText({
 
       hasSalary,
+      compensationBasis:compensation.basis,
       hasQuantity,
       hasDeadline,
       hasWorkTime,
