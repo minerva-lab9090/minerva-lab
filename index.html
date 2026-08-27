@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MINERVA LAB | 案件判定ツール #11</title>
+<title>MINERVA LAB | 案件判定ツール #12</title>
 
 <style>
 body{
@@ -23,9 +23,7 @@ body{
   box-shadow:0 8px 30px rgba(0,0,0,.08);
 }
 
-h1{
-  margin-bottom:4px;
-}
+h1{margin-bottom:4px;}
 
 .subtitle{
   color:#777;
@@ -57,9 +55,7 @@ button{
   cursor:pointer;
 }
 
-button:hover{
-  opacity:.92;
-}
+button:hover{opacity:.92;}
 
 .result{
   display:none;
@@ -101,25 +97,10 @@ button:hover{
   font-weight:bold;
 }
 
-.green{
-  background:#e5f7ed;
-  color:#137840;
-}
-
-.yellow{
-  background:#fff6d9;
-  color:#806000;
-}
-
-.orange{
-  background:#fff0df;
-  color:#a65300;
-}
-
-.red{
-  background:#fde7e7;
-  color:#a51f1f;
-}
+.green{background:#e5f7ed;color:#137840;}
+.yellow{background:#fff6d9;color:#806000;}
+.orange{background:#fff0df;color:#a65300;}
+.red{background:#fde7e7;color:#a51f1f;}
 
 .section{
   margin-top:22px;
@@ -176,17 +157,9 @@ button:hover{
   border:1px solid #eee;
 }
 
-.salary.bad{
-  background:#fff0f0;
-}
-
-.salary.normal{
-  background:#fff8df;
-}
-
-.salary.good{
-  background:#eaf8ef;
-}
+.salary.bad{background:#fff0f0;}
+.salary.normal{background:#fff8df;}
+.salary.good{background:#eaf8ef;}
 
 .salary strong{
   display:block;
@@ -230,7 +203,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator #11 | 具体条件判定版
+Project Evaluator #12 | 納期・頻度分離版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -598,64 +571,150 @@ function hasConcreteUnitPrice(text){
 }
 
 /* =========================
-   具体納期判定
+   具体納期判定 #12
 ========================= */
 
 function detectConcreteDeadline(text){
 
+  const normalized=
+    text.replace(/\s+/g," ");
+
+  /*
+    「納品希望日 -」
+    「納期 未定」
+    「納期 応相談」
+    などは納期確定扱いにしない
+  */
+
+  if(
+    /納品希望日\s*[:：]?\s*[-ー―—]/.test(normalized) ||
+    /納期\s*[:：]?\s*(未定|応相談|相談|なし)/.test(normalized) ||
+    /納品日\s*[:：]?\s*(未定|応相談|相談|なし)/.test(normalized)
+  ){
+    return{
+      concrete:false,
+      mention:true,
+      label:"具体的な納期は未設定"
+    };
+  }
+
+  /*
+    本当に期限として使える表現だけ
+    「具体的納期あり」とする
+  */
+
   const concretePatterns=[
 
-    /\d{1,2}\s*月\s*\d{1,2}\s*日\s*まで/,
+    /\d{4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日\s*(まで|納品|締切)/,
 
-    /\d{1,2}\s*日\s*まで/,
+    /\d{1,2}\s*月\s*\d{1,2}\s*日\s*(まで|納品|締切)/,
+
+    /\d{1,2}\s*日\s*(まで|締切)/,
+
+    /\d+\s*営業日以内/,
 
     /\d+\s*日以内/,
 
     /\d+\s*時間以内/,
 
-    /毎週\s*[月火水木金土日]曜/,
+    /(今週|来週|今月|来月)末\s*(まで|納品|締切)/,
 
-    /毎週\s*\d+\s*回/,
+    /毎週\s*[月火水木金土日]曜(?:日)?\s*(まで|納品|提出|締切)/,
 
-    /週\s*\d+\s*回/,
+    /毎月\s*\d{1,2}\s*日\s*(まで|納品|提出|締切)/,
 
-    /月\s*\d+\s*(?:本|件|枚|投稿)/,
-
-    /\d{4}[\/\-年]\d{1,2}[\/\-月]\d{1,2}/,
-
-    /納品希望日[\s\S]{0,30}?\d{4}[\/\-年]\d{1,2}[\/\-月]\d{1,2}/
+    /\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}\s*(まで|納品|締切)?/
   ];
 
   for(const p of concretePatterns){
 
-    if(p.test(text)){
+    if(p.test(normalized)){
 
       return{
         concrete:true,
-        label:"具体的な期限・頻度あり"
+        mention:true,
+        label:"具体的な納期あり"
       };
     }
   }
 
+  /*
+    「納期遵守」などは
+    納期に触れているだけなので要確認
+  */
+
   if(
-    contains(text,[
+    contains(normalized,[
       "納期",
       "納品",
       "締切",
+      "納期遵守",
+      "納期を遵守",
       "スケジュールを遵守",
-      "納期を遵守"
+      "納期に間に合う",
+      "納期厳守"
     ])
   ){
 
     return{
       concrete:false,
-      label:"納期への言及のみ"
+      mention:true,
+      label:"納期への言及のみで具体期限は不明"
     };
   }
 
   return{
     concrete:false,
+    mention:false,
     label:"納期情報なし"
+  };
+}
+
+/* =========================
+   制作頻度判定 #12
+========================= */
+
+function detectWorkFrequency(text){
+
+  const normalized=
+    text.replace(/\s+/g," ");
+
+  const patterns=[
+
+    /月\s*(\d+)\s*(本|件|枚|投稿)/,
+
+    /毎月\s*(\d+)\s*(本|件|枚|投稿)/,
+
+    /週\s*(\d+)\s*(本|件|枚|投稿)/,
+
+    /毎週\s*(\d+)\s*(本|件|枚|投稿)/,
+
+    /1週間(?:あたり|に)?\s*(\d+)\s*(本|件|枚|投稿)/,
+
+    /1か月(?:あたり|に)?\s*(\d+)\s*(本|件|枚|投稿)/
+  ];
+
+  for(const p of patterns){
+
+    const m=
+      normalized.match(p);
+
+    if(m){
+
+      return{
+        found:true,
+        count:parseInt(m[1]),
+        unit:m[2],
+        label:m[0]
+      };
+    }
+  }
+
+  return{
+    found:false,
+    count:null,
+    unit:"",
+    label:"具体的な制作頻度なし"
   };
 }
 
@@ -799,6 +858,9 @@ function evaluateProject(){
   const concreteDeadline=
     detectConcreteDeadline(text);
 
+  const workFrequency=
+    detectWorkFrequency(text);
+
   const concreteUnitPrice=
     hasConcreteUnitPrice(text);
 
@@ -883,6 +945,10 @@ function evaluateProject(){
     info-=1;
   }
 
+  if(!hasQuantity && !workFrequency.found){
+    info-=1;
+  }
+
   info=
     clamp(info,1,10);
 
@@ -911,6 +977,12 @@ function evaluateProject(){
   else{
     reward=4;
   }
+
+  /*
+    金額だけ高くても
+    作業量と単価が分からなければ
+    高評価しない
+  */
 
   if(
     maxMoney>=30000 &&
@@ -963,7 +1035,6 @@ function evaluateProject(){
   ])){
 
     difficulty+=2;
-
   }
 
   difficulty=
@@ -1181,7 +1252,6 @@ function evaluateProject(){
       warnings.push(
         "応募者が多く、競争率は高めです。"
       );
-
     }
     else if(ratio>=5){
       competition=4;
@@ -1310,7 +1380,6 @@ function evaluateProject(){
         "標準ケースでは実質時給が低くなる可能性があります。"
       );
     }
-
   }
   else{
 
@@ -1322,6 +1391,19 @@ function evaluateProject(){
 
     numbers.push(
       "具体的な作業量または単価情報が不足しているため、実質単価・総作業時間は算出できません。"
+    );
+  }
+
+  /*
+    制作頻度は納期とは別物
+  */
+
+  if(workFrequency.found){
+
+    numbers.push(
+      "制作頻度として「"+
+      workFrequency.label+
+      "」を検出しました。"
     );
   }
 
@@ -1343,12 +1425,21 @@ function evaluateProject(){
     revenueConditions++;
   }
 
+  if(
+    workFrequency.found &&
+    !hasDeadline
+  ){
+
+    warnings.push(
+      "制作頻度は確認できますが、頻度と納品期限は別条件のため、納期確認済みにはしていません。"
+    );
+  }
+
   if(revenueConditions===3){
 
     reasons.push(
       "報酬額・作業量・具体的な納期の3条件が確認できます。"
     );
-
   }
   else if(revenueConditions===2){
 
@@ -1361,7 +1452,6 @@ function evaluateProject(){
     warnings.push(
       "収益性を判断する3条件のうち1項目が不足しています。"
     );
-
   }
   else if(revenueConditions===1){
 
@@ -1380,7 +1470,6 @@ function evaluateProject(){
     warnings.push(
       "収益性を判断する3条件のうち2項目が不足しています。"
     );
-
   }
   else{
 
@@ -1399,14 +1488,25 @@ function evaluateProject(){
   if(!hasQuantity){
 
     checks.push(
-      "月または1案件あたりの制作件数・枚数を確認してください。"
+      "月または1案件あたりの制作件数・枚数・本数を確認してください。"
     );
   }
 
   if(!hasDeadline){
 
     checks.push(
-      "具体的な納期や制作スケジュールを確認してください。"
+      "具体的な納品期限、1回ごとの締切、制作スケジュールを確認してください。"
+    );
+  }
+
+  if(
+    maxMoney>=30000 &&
+    !hasQuantity &&
+    !concreteUnitPrice
+  ){
+
+    checks.push(
+      "30,000〜50,000円などの表示報酬が、何件・何枚・何本分の報酬なのか確認してください。"
     );
   }
 
@@ -1471,13 +1571,14 @@ function evaluateProject(){
     );
 
   /* =========================
-     上限制御
+     上限制御 #12
   ========================= */
 
   if(
     client<=2 &&
     info<=6
   ){
+
     totalScore=
       Math.min(
         totalScore,
@@ -1490,7 +1591,24 @@ function evaluateProject(){
     totalScore=
       Math.min(
         totalScore,
-        62
+        60
+      );
+  }
+
+  /*
+    クライアント信頼度が低く
+    収益条件も1つ以下しか確認できない場合
+  */
+
+  if(
+    client<=2 &&
+    revenueConditions<=1
+  ){
+
+    totalScore=
+      Math.min(
+        totalScore,
+        54
       );
   }
 
@@ -1525,7 +1643,6 @@ function evaluateProject(){
       "🟢 応募推奨";
 
     cls="green";
-
   }
   else if(totalScore>=60){
 
@@ -1533,7 +1650,6 @@ function evaluateProject(){
       "🟡 条件確認後に応募";
 
     cls="yellow";
-
   }
   else if(totalScore>=45){
 
@@ -1541,7 +1657,6 @@ function evaluateProject(){
       "🟠 慎重に検討";
 
     cls="orange";
-
   }
   else{
 
@@ -1599,14 +1714,12 @@ function evaluateProject(){
       el.className="ok";
       el.textContent=
         "確認済み："+text;
-
     }
     else if(type==="hold"){
 
       el.className="hold";
       el.textContent=
         "要確認："+text;
-
     }
     else{
 
@@ -1636,6 +1749,12 @@ function evaluateProject(){
       : "具体的な作業量不明"
   );
 
+  /*
+    #12
+    納期への言及だけなら黄色
+    本当に具体期限があれば緑
+  */
+
   if(hasDeadline){
 
     setStatus(
@@ -1643,19 +1762,14 @@ function evaluateProject(){
       "ok",
       concreteDeadline.label
     );
-
   }
-  else if(
-    concreteDeadline.label===
-    "納期への言及のみ"
-  ){
+  else if(concreteDeadline.mention){
 
     setStatus(
       "deadlineStatus",
       "hold",
-      "納期という記載はありますが、具体期限は不明"
+      concreteDeadline.label
     );
-
   }
   else{
 
@@ -1759,7 +1873,6 @@ function evaluateProject(){
       "約"+
       formatNumber(salaryFast)+
       "円/時";
-
   }
   else{
 
