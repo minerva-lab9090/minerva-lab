@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MINERVA LAB | 案件判定ツール #30</title>
+<title>MINERVA LAB | 案件判定ツール #31</title>
 
 <style>
 
@@ -491,7 +491,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator #30 | 確認回答・再判定対応版（修正版）
+Project Evaluator #31 | クライアント回答・再判定ロジック強化版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -884,7 +884,10 @@ function detectAiPolicy(text){
       "AI使用OK",
       "AI利用OK"
     ]) ||
-    /(?:生成AI|ChatGPT|AI)(?:の)?(?:使用|利用|活用)?(?:は|を)?(?:可能|許可|OK)/i.test(allowedSource));
+    /(?:生成AI|ChatGPT|AI)(?:の)?(?:使用|利用|活用)?(?:は|を)?(?:可能|許可|OK)/i.test(allowedSource) ||
+    /* #31: 「ChatGPT、生成AI、Canvaの利用は可能」のような列挙回答にも対応 */
+    /(?:ChatGPT|生成AI|AI)[\s\S]{0,30}(?:利用|使用|活用)(?:は|が|を)?(?:可能|可|許可|OK)/i.test(allowedSource) ||
+    /(?:利用|使用|活用)(?:は|が|を)?(?:可能|可|許可|OK)[\s\S]{0,30}(?:ChatGPT|生成AI|AI)/i.test(allowedSource));
 
   if(prohibited && allowed){
     return "conflict";
