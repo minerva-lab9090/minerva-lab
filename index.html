@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MINERVA LAB | 案件判定ツール</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f6fa;
+      margin: 0;
+      padding: 40px 20px;
+      color: #222;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: white;
+      padding: 35px;
+      border-radius: 18px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+    }
+
+    h1 {
+      margin-bottom: 5px;
+    }
+
+    .subtitle {
+      color: #777;
+      margin-bottom: 30px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 220px;
+      padding: 15px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      font-size: 16px;
+      resize: vertical;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 15px;
+      padding: 15px;
+      border: none;
+      border-radius: 10px;
+      background: #222;
+      color: white;
+      font-size: 17px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      opacity: 0.85;
+    }
+
+    #result {
+      display: none;
+      margin-top: 30px;
+      padding: 25px;
+      background: #f8f8f8;
+      border-radius: 12px;
+    }
+
+    .score {
+      line-height: 2;
+    }
+
+    .decision {
+      margin-top: 20px;
+      font-size: 24px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <h1>MINERVA LAB</h1>
+  <div class="subtitle">AI Project Evaluator #01</div>
+
+  <h2>案件内容を入力</h2>
+
+  <textarea id="project"
+    placeholder="ここにクラウドワークスなどの案件内容を貼り付けてください。"></textarea>
+
+  <button onclick="evaluateProject()">案件を分析する</button>
+
+  <div id="result">
+
+    <h2>分析結果</h2>
+
+    <div class="score">
+      💰 報酬評価：<span id="reward"></span><br>
+      🛠 難易度：<span id="difficulty"></span><br>
+      🤖 AI活用度：<span id="ai"></span><br>
+      ⏱ 想定作業時間：<span id="time"></span><br>
+      ⚠️ リスク：<span id="risk"></span>
+    </div>
+
+    <div class="decision" id="decision"></div>
+
+  </div>
+
+</div>
+
+<script>
+
+function evaluateProject() {
+
+  const text = document.getElementById("project").value;
+
+  if (text.trim() === "") {
+    alert("案件内容を入力してください");
+    return;
+  }
+
+  // 現在はデモ判定。次の段階でAIと接続します。
+  document.getElementById("reward").textContent = "8 / 10";
+  document.getElementById("difficulty").textContent = "4 / 10";
+  document.getElementById("ai").textContent = "9 / 10";
+  document.getElementById("time").textContent = "約2時間";
+  document.getElementById("risk").textContent = "低";
+
+  document.getElementById("decision").textContent =
+    "🟢 応募推奨";
+
+  document.getElementById("result").style.display = "block";
+}
+
+</script>
+
+</body>
+</html>
