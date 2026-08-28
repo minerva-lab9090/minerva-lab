@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MINERVA LAB | 案件判定ツール #41</title>
+<title>MINERVA LAB | 案件判定ツール #42</title>
 
 <style>
 
@@ -1182,47 +1182,43 @@ function analyzeClientTrust(text){
   /* #41: 応募者負担の「あり」と「なし」を分離。
      「教材購入はありません」「登録料・初期費用は一切かかりません」などの
      否定表現を、金銭要求として誤検出しない。 */
-  const moneyRiskTerms=[
-    /教材(?:の)?購入/g,
-    /教材を購入/g,
-    /スクール(?:への)?入会/g,
-    /登録料/g,
-    /初期費用/g,
-    /参加費/g,
-    /保証金/g,
-    /商品購入/g,
-    /有料講座/g
-  ];
+  /* #42: 金銭要求・列挙否定文対応版
+     危険ワードを単語単位ではなく文単位で判定し、
+     複数ワードをまとめて否定する安全表現を誤検出しない。 */
+  const moneyRiskTermPattern=
+    /(?:教材(?:の)?購入|教材を購入|スクール(?:への)?入会|登録料|初期費用|参加費|保証金|商品購入|有料講座)/;
 
-  const isNegatedMoneyTerm=(index,length)=>{
-    const around=normalized.slice(
-      Math.max(0,index-18),
-      Math.min(normalized.length,index+length+32)
-    );
+  const moneyNegativePattern=
+    /(?:ありません|ございません|不要です|不要|必要ありません|必要ございません|一切(?:不要|ありません|ございません|かかりません|掛かりません)|かかりません|掛かりません|発生しません|請求しません|請求いたしません|請求することはありません|求めません|求めることはありません|お願いしません|お願いすることはありません|購入不要|入会不要|負担なし|負担はありません|負担いただくことはありません)/;
 
-    return /(?:ありません|ございません|不要|なし|無し|一切(?:不要|なし|無し|かかりません|掛かりません)|かかりません|掛かりません|発生しません|必要ありません|必要ございません|求めません|お願い(?:すること)?はありません|購入不要|入会不要|負担なし|負担はありません)/.test(around);
-  };
+  const moneyPositivePattern=
+    /(?:購入が必要|購入必須|購入してください|購入をお願いします|入会が必要|入会必須|入会してください|支払いが必要|支払が必要|お支払いください|支払ってください|費用が必要|費用が発生|料金が発生|かかります|掛かります|負担してください|負担いただきます|請求します|請求いたします|必要です|必須です)/;
+
+  const moneySentences=
+    normalized
+      .split(/[。\n\r！？!?]+/)
+      .map(s=>s.trim())
+      .filter(Boolean);
 
   let moneyRequest=false;
 
-  for(const re of moneyRiskTerms){
-    re.lastIndex=0;
-    let hit;
-    while((hit=re.exec(normalized))!==null){
-      if(!isNegatedMoneyTerm(hit.index,hit[0].length)){
-        moneyRequest=true;
-        break;
-      }
-    }
-    if(moneyRequest) break;
-  }
+  for(const sentence of moneySentences){
+    if(!moneyRiskTermPattern.test(sentence)) continue;
+    if(moneyNegativePattern.test(sentence)) continue;
 
-  /* 明示的に支払い・購入を要求する表現は強制的に危険扱い */
-  if(
-    /(?:教材|商品|有料講座)[^。\n]{0,20}(?:購入が必要|購入必須|購入してください|購入をお願いします)/.test(normalized) ||
-    /(?:登録料|初期費用|参加費|保証金)[^。\n]{0,20}(?:必要|必須|支払|お支払|かかります|掛かります|発生します)/.test(normalized)
-  ){
-    moneyRequest=true;
+    if(moneyPositivePattern.test(sentence)){
+      moneyRequest=true;
+      break;
+    }
+
+    if(
+      /(?:教材|商品|有料講座)[^。]{0,30}(?:購入が必要|購入必須|購入してください|購入をお願いします)/.test(sentence) ||
+      /スクール[^。]{0,30}(?:入会が必要|入会必須|入会してください)/.test(sentence) ||
+      /(?:登録料|初期費用|参加費|保証金)[^。]{0,30}(?:支払|お支払|必要|必須|発生|かかる|掛かる|請求)/.test(sentence)
+    ){
+      moneyRequest=true;
+      break;
+    }
   }
 
   const unpaidTest=
