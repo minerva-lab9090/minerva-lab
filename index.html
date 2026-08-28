@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MINERVA LAB | 案件判定ツール #36</title>
+<title>MINERVA LAB | 案件判定ツール #37</title>
 
 <style>
 
@@ -491,7 +491,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator #36 | 実案件検証・判定精度改善版
+Project Evaluator #37 | 明示条件最優先・AI／作業時間抽出修正版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -901,6 +901,16 @@ function detectAiPolicy(text){
     return "allowed";
   }
 
+  /* #37: AIを実作業として明示している案件は利用許可と判定 */
+  const aiTaskUsage =
+    /(?:ChatGPT|生成AI|AI)[\s\S]{0,40}?(?:で|を使(?:い|って)|を使用|を利用|を活用)[\s\S]{0,40}?(?:画像生成|画像を作|作成|制作|生成|編集|仕上げ)/i.test(text) ||
+    /(?:画像生成|画像を作|作成|制作|生成|編集)[\s\S]{0,40}?(?:ChatGPT|生成AI|AI)(?:無料版)?(?:を|で)?(?:使用|利用|活用|使)/i.test(text) ||
+    /(?:お仕事内容|仕事内容)[\s\S]{0,120}?(?:ChatGPT|生成AI|AI)(?:無料版)?[\s\S]{0,60}?(?:画像生成|生成|作成|制作)/i.test(text);
+
+  if(aiTaskUsage && !prohibited){
+    return "allowed";
+  }
+
   return "unknown";
 
 }
@@ -1047,7 +1057,7 @@ function detectPaymentType(text){
   }
 
   if(
-    /1\s*(件|枚|本|投稿)[^\d]{0,15}[\d,]+\s*円/.test(text) ||
+    /1\s*(件|枚|本|投稿|記事|点|商品|画像|動画|ページ|カット)[^\d]{0,15}[\d,]+\s*円/.test(text) ||
     contains(text,[
       "1件あたり",
       "1枚あたり",
@@ -1255,7 +1265,9 @@ function analyzeWorkloadSchedule(text){
     {re:new RegExp("(\\d+)\\s*("+unit.slice(3,-1)+")\\s*[\\/／]\\s*月","g"), period:"month"},
     {re:new RegExp("合計\\s*(\\d+)\\s*("+unit.slice(3,-1)+")","g"), period:"total"},
     {re:/記事数\s*[:：]?\s*(\d+)\s*(記事)/g, period:"total"},
-    {re:/(\d+)\s*(記事)\s*(?:作成|執筆|納品)/g, period:"total"}
+    {re:/(\d+)\s*(記事)\s*(?:作成|執筆|納品)/g, period:"total"},
+    /* #37: 成果物：縦型ショート動画 1本 のような明示数量 */
+    {re:new RegExp("(?:成果物|納品物|制作物|納品内容)\\s*[:：]?[^。\\n]{0,50}?(\\d+)\\s*("+unit.slice(3,-1)+")","g"), period:"total"}
   ];
 
   for(const p of patterns){
@@ -1358,7 +1370,10 @@ function extractQuantity(text){
     /(\d+)\s*件作成/,
     /(\d+)\s*本作成/,
     /(\d+)\s*商品(?:作成|加工|対応)/,
-    /(\d+)\s*画像(?:作成|加工|対応)/
+    /(\d+)\s*画像(?:作成|加工|対応)/,
+
+    /* #37: 成果物・納品物に明記された数量 */
+    /(?:成果物|納品物|制作物|納品内容)\s*[:：]?[^。\n]{0,50}?(\d+)\s*(?:件|枚|本|投稿|記事|点|商品|画像|動画|ページ|カット)/
 
   ];
 
@@ -1619,12 +1634,43 @@ function detectProjectType(text){
 function extractExplicitWorkTime(text){
 
   const normalized=text.replace(/\s+/g," ");
-  const patterns=[
-    /(?:1\s*(?:件|枚|本|投稿|記事|商品|画像|動画)\s*(?:あたり|につき)?|1制作\s*(?:あたり|につき)?)[^\d]{0,20}(\d+(?:\.\d+)?)\s*(分|時間)/i,
+
+  /* #37:
+     募集文に明記された実作業時間を案件タイプ推定より優先。
+     「1本1〜2時間」「1本あたり1～2時間」等の範囲も保持する。
+  */
+  const rangePatterns=[
+    /(?:1\s*(?:件|枚|本|投稿|記事|商品|画像|動画|ページ|カット)\s*(?:あたり|につき)?|1制作\s*(?:あたり|につき)?)[^\d]{0,20}(\d+(?:\.\d+)?)\s*(?:〜|～|~|-|－)\s*(\d+(?:\.\d+)?)\s*(分|時間)/i,
+    /(?:作業時間|制作時間|所要時間|目安時間)[^\d]{0,20}(\d+(?:\.\d+)?)\s*(?:〜|～|~|-|－)\s*(\d+(?:\.\d+)?)\s*(分|時間)/i
+  ];
+
+  for(const p of rangePatterns){
+    const m=normalized.match(p);
+    if(m){
+      let min=parseFloat(m[1]);
+      let max=parseFloat(m[2]);
+      if(m[3]==="時間"){ min*=60; max*=60; }
+      if(min>0 && max>=min && max<=1440){
+        return{
+          minutes:(min+max)/2,
+          minMinutes:min,
+          maxMinutes:max,
+          fastMinutes:min,
+          normalMinutes:(min+max)/2,
+          slowMinutes:max,
+          label:"募集文・確認回答："+Math.round(min)+"〜"+Math.round(max)+"分/件",
+          explicit:true
+        };
+      }
+    }
+  }
+
+  const singlePatterns=[
+    /(?:1\s*(?:件|枚|本|投稿|記事|商品|画像|動画|ページ|カット)\s*(?:あたり|につき)?|1制作\s*(?:あたり|につき)?)[^\d]{0,20}(\d+(?:\.\d+)?)\s*(分|時間)/i,
     /(?:作業時間|制作時間|所要時間|目安時間)[^\d]{0,20}(\d+(?:\.\d+)?)\s*(分|時間)/i
   ];
 
-  for(const p of patterns){
+  for(const p of singlePatterns){
     const m=normalized.match(p);
     if(m){
       const value=parseFloat(m[1]);
@@ -1632,14 +1678,19 @@ function extractExplicitWorkTime(text){
       if(minutes>0 && minutes<=1440){
         return{
           minutes,
-          label:"募集文・確認回答：約"+Math.round(minutes)+"分/件"
+          minMinutes:minutes,
+          maxMinutes:minutes,
+          fastMinutes:minutes,
+          normalMinutes:minutes,
+          slowMinutes:minutes,
+          label:"募集文・確認回答：約"+Math.round(minutes)+"分/件",
+          explicit:true
         };
       }
     }
   }
 
   return null;
-
 }
 
 function setSummaryCard(
