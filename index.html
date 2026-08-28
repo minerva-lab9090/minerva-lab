@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MINERVA LAB | 案件判定ツール #35</title>
+<title>MINERVA LAB | 案件判定ツール #36</title>
 
 <style>
 
@@ -491,7 +491,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator #35 | 報酬条件・再判定整合性強化版
+Project Evaluator #36 | 実案件検証・判定精度改善版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -954,7 +954,7 @@ function extractMoneyValues(text){
 
 
 /* =========================
-   #35 報酬条件・再判定整合性強化
+   #36 実案件検証・判定精度改善
    ・クライアント確認回答にある「1商品につき1,000円」等を単価として認識
    ・「月30商品」「月30画像」等を作業量として認識
    ・1商品/1画像あたりの作業時間を再計算へ反映
@@ -965,16 +965,32 @@ function extractMoneyValues(text){
 
 /* #25 報酬・数量読み違い防止 */
 function analyzeCompensation(text){
-  const normalized=text.replace(/[￥¥]/g,"円");
+  const normalized=text
+    .replace(/[￥¥]\s*([\d,.]+)/g,"$1円")
+    .replace(/([\d,.]+)\s*[￥¥]/g,"$1円");
   const toYen=(num,man)=>Math.round(parseFloat(String(num).replace(/,/g,""))*(man ? 10000 : 1));
-  const unitValues=[], monthlyValues=[], totalValues=[], testValues=[];
+  const itemUnitValues=[], characterUnitValues=[], monthlyValues=[], totalValues=[], testValues=[];
   let m;
 
-  const unitRegex=/(?:1\s*(?:件|枚|本|投稿|記事|点|商品|画像|動画|ページ|カット)\s*(?:あたり|につき)?|(?:件|枚|本|投稿|記事|点|商品|画像|動画|ページ|カット)\s*単価|単価)\s*[:：]?\s*(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
-  while((m=unitRegex.exec(normalized))!==null) unitValues.push(toYen(m[1],m[2]));
+  /* 1件あたり500円 / 1記事500円 / ページ単価1,000円 等 */
+  const perItemRegex=/(?:1\s*(件|枚|本|投稿|記事|点|商品|画像|動画|ページ|カット)\s*(?:あたり|につき)\s*[:：]?|(?:件|枚|本|投稿|記事|点|商品|画像|動画|ページ|カット)\s*単価\s*[:：]?)\s*(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
+  while((m=perItemRegex.exec(normalized))!==null) itemUnitValues.push(toYen(m[2],m[3]));
 
-  const slashUnitRegex=/(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円\s*[\/／]\s*(?:件|枚|本|投稿|記事|点|商品|画像|動画|ページ|カット)/g;
-  while((m=slashUnitRegex.exec(normalized))!==null) unitValues.push(toYen(m[1],m[2]));
+  const directItemRegex=/1\s*(件|枚|本|投稿|記事|点|商品|画像|動画|ページ|カット)\s*[:：]?\s*(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
+  while((m=directItemRegex.exec(normalized))!==null) itemUnitValues.push(toYen(m[2],m[3]));
+
+  const slashUnitRegex=/(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円\s*(?:～|~|〜|-)?\s*[\/／]\s*(件|枚|本|投稿|記事|点|商品|画像|動画|ページ|カット|文字)/g;
+  while((m=slashUnitRegex.exec(normalized))!==null){
+    const v=toYen(m[1],m[2]);
+    if(m[3]==="文字") characterUnitValues.push(v);
+    else itemUnitValues.push(v);
+  }
+
+  const articleUnitRegex=/(?:記事単価|1\s*記事\s*(?:あたり|につき))\s*[:：]?\s*(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
+  while((m=articleUnitRegex.exec(normalized))!==null) itemUnitValues.push(toYen(m[1],m[2]));
+
+  const charUnitRegex=/(?:文字単価)\s*[:：]?\s*(\d+(?:\.\d+)?)\s*円/g;
+  while((m=charUnitRegex.exec(normalized))!==null) characterUnitValues.push(parseFloat(m[1]));
 
   const monthlyRegex=/(?:月額(?:報酬)?|月収|月\s*報酬)\s*[:：]?\s*(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
   while((m=monthlyRegex.exec(normalized))!==null) monthlyValues.push(toYen(m[1],m[2]));
@@ -982,17 +998,19 @@ function analyzeCompensation(text){
   const slashMonthlyRegex=/(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円\s*[\/／]\s*(?:月|月額)/g;
   while((m=slashMonthlyRegex.exec(normalized))!==null) monthlyValues.push(toYen(m[1],m[2]));
 
-  const testRegex=/(?:テスト|トライアル|お試し)[\s\S]{0,20}?(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
+  const testRegex=/(?:テスト|トライアル|お試し)[\s\S]{0,30}?(?:報酬|料金)?\s*[:：]?\s*(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
   while((m=testRegex.exec(normalized))!==null) testValues.push(toYen(m[1],m[2]));
 
   const totalRegex=/(?:固定報酬制|契約金額|報酬総額|案件総額|予算)\s*[:：]?\s*(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
   while((m=totalRegex.exec(normalized))!==null) totalValues.push(toYen(m[1],m[2]));
 
+  const unitValues=[...itemUnitValues,...characterUnitValues];
   const all=extractMoneyValues(normalized);
   const excluded=[...unitValues,...monthlyValues,...totalValues,...testValues];
-  let basis="unknown", values=[];
+  let basis="unknown", values=[], unitKind=null;
 
-  if(unitValues.length){ basis="unit"; values=unitValues; }
+  if(itemUnitValues.length){ basis="unit"; values=itemUnitValues; unitKind="item"; }
+  else if(characterUnitValues.length){ basis="unit"; values=characterUnitValues; unitKind="character"; }
   else if(monthlyValues.length){ basis="monthly"; values=monthlyValues; }
   else if(totalValues.length){ basis="total"; values=totalValues; }
   else{
@@ -1007,10 +1025,10 @@ function analyzeCompensation(text){
   const positive=values.filter(v=>v>0);
   const min=positive.length ? Math.min(...positive) : 0;
   const max=positive.length ? Math.max(...positive) : 0;
-  let label=basis==="unit" ? "単価報酬" : basis==="monthly" ? "月額報酬" : basis==="total" ? "案件総額" : "判定困難";
+  let label=basis==="unit" ? (unitKind==="character" ? "文字単価報酬" : "単価報酬") : basis==="monthly" ? "月額報酬" : basis==="total" ? "案件総額" : "判定困難";
   if(testValues.length) label+="（テスト報酬は別枠で検出）";
 
-  return{basis,label,min,max,unitValues,monthlyValues,totalValues,testValues};
+  return{basis,label,min,max,unitKind,unitValues,itemUnitValues,characterUnitValues,monthlyValues,totalValues,testValues};
 }
 
 function detectPaymentType(text){
@@ -1111,7 +1129,6 @@ function analyzeClientTrust(text){
   const externalService=
     contains(normalized,[
       "LINE",
-      "ライン",
       "Telegram",
       "テレグラム",
       "Discord",
@@ -1120,17 +1137,16 @@ function analyzeClientTrust(text){
     ]);
 
   const preContractExternal=
-    /(?:契約前|応募後すぐ|応募後)[\s\S]{0,35}?(?:LINE|ライン|Telegram|テレグラム|Discord|Chatwork|チャットワーク|外部(?:連絡|ツール|サービス))/i.test(normalized) ||
+    /(?:契約前|応募後すぐ|応募後)[\s\S]{0,35}?(?:LINE|Telegram|テレグラム|Discord|Chatwork|チャットワーク|外部(?:連絡|ツール|サービス))/i.test(normalized) ||
     /(?:LINE追加|LINEで連絡|Telegram|テレグラム)[\s\S]{0,35}?(?:契約前|応募時|応募後)/i.test(normalized) ||
     contains(normalized,[
       "契約前に外部連絡",
       "契約前の外部連絡",
-      "契約前にLINE",
-      "契約前にライン"
+      "契約前にLINE"
     ]);
 
   const postContractExternal=
-    /(?:契約後|仮払い後)[\s\S]{0,35}?(?:LINE|ライン|Telegram|テレグラム|Discord|Chatwork|チャットワーク|外部(?:連絡|ツール|サービス))/i.test(normalized);
+    /(?:契約後|仮払い後)[\s\S]{0,35}?(?:LINE|Telegram|テレグラム|Discord|Chatwork|チャットワーク|外部(?:連絡|ツール|サービス))/i.test(normalized);
 
   const moneyRequest=
     contains(normalized,[
@@ -1219,7 +1235,7 @@ function analyzeWorkloadSchedule(text){
   const candidates=[];
   let m;
 
-  const add=(value,period,raw)=>{
+  const add=(value,period,raw,unitLabel="件")=>{
     value=parseInt(value);
     if(!value || value<1 || value>10000) return;
     let monthly=null;
@@ -1227,32 +1243,34 @@ function analyzeWorkloadSchedule(text){
     if(period==="week") monthly=value*4.33;
     if(period==="month") monthly=value;
     if(period==="total") monthly=null;
-    candidates.push({value,period,monthly,raw});
+    candidates.push({value,period,monthly,raw,unit:unitLabel});
   };
 
   const patterns=[
-    {re:new RegExp("(?:1日|日)[あたりにつき\\s]*?(\\d+)\\s*"+unit,"g"), period:"day"},
-    {re:new RegExp("(?:週|1週間)[あたりにつき\\s]*?(\\d+)\\s*"+unit,"g"), period:"week"},
-    {re:new RegExp("(?:月|1か月|1ヶ月|1カ月)[あたりにつき\\s]*?(\\d+)\\s*"+unit,"g"), period:"month"},
-    {re:new RegExp("(\\d+)\\s*"+unit+"\\s*\\/\\s*日","g"), period:"day"},
-    {re:new RegExp("(\\d+)\\s*"+unit+"\\s*\\/\\s*週","g"), period:"week"},
-    {re:new RegExp("(\\d+)\\s*"+unit+"\\s*\\/\\s*月","g"), period:"month"},
-    {re:new RegExp("合計\\s*(\\d+)\\s*"+unit,"g"), period:"total"}
+    {re:new RegExp("(?:1日|日)(?:あたり|につき|に|で|\\s)*?(\\d+)\\s*("+unit.slice(3,-1)+")","g"), period:"day"},
+    {re:new RegExp("(?:週|1週間)(?:あたり|につき|に|で|\\s)*?(\\d+)\\s*("+unit.slice(3,-1)+")","g"), period:"week"},
+    {re:new RegExp("(?:月|1か月|1ヶ月|1カ月)(?:あたり|につき|に|で|\\s)*?(\\d+)\\s*("+unit.slice(3,-1)+")","g"), period:"month"},
+    {re:new RegExp("(\\d+)\\s*("+unit.slice(3,-1)+")\\s*[\\/／]\\s*日","g"), period:"day"},
+    {re:new RegExp("(\\d+)\\s*("+unit.slice(3,-1)+")\\s*[\\/／]\\s*週","g"), period:"week"},
+    {re:new RegExp("(\\d+)\\s*("+unit.slice(3,-1)+")\\s*[\\/／]\\s*月","g"), period:"month"},
+    {re:new RegExp("合計\\s*(\\d+)\\s*("+unit.slice(3,-1)+")","g"), period:"total"},
+    {re:/記事数\s*[:：]?\s*(\d+)\s*(記事)/g, period:"total"},
+    {re:/(\d+)\s*(記事)\s*(?:作成|執筆|納品)/g, period:"total"}
   ];
 
   for(const p of patterns){
-    while((m=p.re.exec(normalized))!==null) add(m[1],p.period,m[0]);
+    while((m=p.re.exec(normalized))!==null) add(m[1],p.period,m[0],m[2]||"件");
   }
 
   // 「月30件程度」のような既存表現も拾う
   const loose=[
-    {re:new RegExp("月\\s*(\\d+)\\s*"+unit+"\\s*(?:程度|程|前後)?","g"),period:"month"},
-    {re:new RegExp("週\\s*(\\d+)\\s*"+unit+"\\s*(?:程度|程|前後)?","g"),period:"week"},
-    {re:new RegExp("1日\\s*(\\d+)\\s*"+unit+"\\s*(?:程度|程|前後)?","g"),period:"day"}
+    {re:new RegExp("月\\s*(\\d+)\\s*("+unit.slice(3,-1)+")\\s*(?:程度|程|前後|分ほど|ほど)?","g"),period:"month"},
+    {re:new RegExp("週\\s*(\\d+)\\s*("+unit.slice(3,-1)+")\\s*(?:程度|程|前後)?","g"),period:"week"},
+    {re:new RegExp("1日\\s*(\\d+)\\s*("+unit.slice(3,-1)+")\\s*(?:程度|程|前後)?","g"),period:"day"}
   ];
   for(const p of loose){
     while((m=p.re.exec(normalized))!==null){
-      if(!candidates.some(x=>x.raw===m[0])) add(m[1],p.period,m[0]);
+      if(!candidates.some(x=>x.raw===m[0])) add(m[1],p.period,m[0],m[2]||"件");
     }
   }
 
@@ -1290,8 +1308,10 @@ function analyzeWorkloadSchedule(text){
   return{
     candidates, primary,
     quantity: primary ? primary.value : null,
+    unit: primary ? primary.unit : null,
     period: primary ? primary.period : null,
     monthlyQuantity: primary ? primary.monthly : null,
+    characterCount: ((m=normalized.match(/(?:1記事あたりの文字数|文字数)\s*[:：]?\s*(\d+)\s*文字/)) ? parseInt(m[1]) : null),
     deadlineKind, deadlineValue, deadlineLabel,
     concreteDeadline: deadline
   };
@@ -1479,6 +1499,12 @@ function detectProjectType(text){
 
   const definitions=[
     {
+      name:"漫画・イラスト制作",
+      fast:90, normal:180, slow:360,
+      strong:["漫画制作","漫画作成","漫画の制作","漫画イラストレーター","sns漫画","コミック制作","ネーム・清書","ネーム作成"],
+      medium:["漫画","マンガ","イラスト作成","イラスト制作","イラストレーター","コマ割り","清書","ネーム","グレースケール","表情差分"]
+    },
+    {
       name:"SNS画像制作",
       fast:10, normal:20, slow:35,
       strong:["sns投稿画像","instagram投稿画像","インスタ投稿画像","フィード投稿画像","snsクリエイティブ"],
@@ -1523,8 +1549,8 @@ function detectProjectType(text){
     {
       name:"ライティング",
       fast:30, normal:60, slow:120,
-      strong:["記事作成","記事執筆","ライティング","ブログ記事作成","webライター"],
-      medium:["ブログ記事","文章作成","原稿作成","コラム","seo記事","レビュー記事"]
+      strong:["記事作成","記事執筆","ライティング","ブログ記事作成","webライター","web記事","記事・webコンテンツ作成"],
+      medium:["ブログ記事","文章作成","原稿作成","コラム","seo記事","レビュー記事","記事数","文字数","文字単価"]
     },
     {
       name:"データ入力・事務",
@@ -1687,7 +1713,11 @@ function buildQuestionText(options){
   if(!options.hasQuantity){
 
     questions.push(
-      "・月または1案件あたりの制作件数・枚数・本数の目安"
+      options.projectType==="ライティング"
+        ? "・継続時の1か月あたりの記事本数・文字数の目安"
+        : options.projectType==="漫画・イラスト制作"
+          ? "・継続時の1か月あたりのページ数・点数・制作本数の目安"
+          : "・月または1案件あたりの制作件数・枚数・本数の目安"
     );
 
   }
@@ -1740,7 +1770,9 @@ function buildQuestionText(options){
   else if(!options.hasAiRule){
 
     questions.push(
-      "・ChatGPTや生成AI、Canva等の利用可否"
+      (options.projectType==="バナー・広告画像制作" || options.projectType==="SNS画像制作" || options.projectType==="画像加工・編集")
+        ? "・ChatGPT・生成AI・Canva等の利用可否"
+        : "・生成AI・AI補助ツールの利用可否"
     );
 
   }
@@ -1956,7 +1988,7 @@ function evaluateProject(){
     workloadSchedule.concreteDeadline;
 
   const concreteUnitPrice=
-    hasConcreteUnitPrice(text);
+    compensation.basis==="unit" || hasConcreteUnitPrice(text);
 
   const aiPolicy=
     detectAiPolicy(text);
@@ -1969,11 +2001,20 @@ function evaluateProject(){
       ? workloadSchedule.monthlyQuantity
       : quantity;
 
+  const characterMultiplier=
+    compensation.unitKind==="character" && workloadSchedule.characterCount
+      ? workloadSchedule.characterCount*(calculationQuantity||1)
+      : null;
+
   const estimatedRewardMax=
-    compensation.basis==="unit" && calculationQuantity ? maxMoney*calculationQuantity : maxMoney;
+    compensation.basis==="unit" && compensation.unitKind==="character" && characterMultiplier
+      ? maxMoney*characterMultiplier
+      : compensation.basis==="unit" && calculationQuantity ? maxMoney*calculationQuantity : maxMoney;
 
   const estimatedRewardMin=
-    compensation.basis==="unit" && calculationQuantity ? minMoney*calculationQuantity : minMoney;
+    compensation.basis==="unit" && compensation.unitKind==="character" && characterMultiplier
+      ? minMoney*characterMultiplier
+      : compensation.basis==="unit" && calculationQuantity ? minMoney*calculationQuantity : minMoney;
 
   const rewardBasisMax=estimatedRewardMax;
 
@@ -2000,27 +2041,38 @@ function evaluateProject(){
   }
 
   if(compensation.basis==="unit" && calculationQuantity){
-    const qtyLabel=workloadSchedule.monthlyQuantity!==null
-      ? "月間換算"+Math.round(calculationQuantity*10)/10+"件"
-      : "数量"+calculationQuantity+"件";
-    numbers.push(
-      "単価報酬として認識し、"+qtyLabel+"を基準にした想定報酬総額は約"+
-      (estimatedRewardMin===estimatedRewardMax
-        ? formatNumber(estimatedRewardMax)
-        : formatNumber(estimatedRewardMin)+"〜"+formatNumber(estimatedRewardMax))+"円です。"
-    );
+    if(compensation.unitKind==="character" && workloadSchedule.characterCount){
+      numbers.push(
+        "文字単価"+minMoney+"円、約"+workloadSchedule.characterCount+"文字×"+calculationQuantity+(workloadSchedule.unit||"件")+
+        "として、想定報酬は約"+formatNumber(estimatedRewardMax)+"円です。"
+      );
+    }else{
+      const qtyLabel=workloadSchedule.monthlyQuantity!==null
+        ? "月間換算"+Math.round(calculationQuantity*10)/10+(workloadSchedule.unit||"件")
+        : "数量"+calculationQuantity+(workloadSchedule.unit||"件");
+      numbers.push(
+        "単価報酬として認識し、"+qtyLabel+"を基準にした想定報酬総額は約"+
+        (estimatedRewardMin===estimatedRewardMax
+          ? formatNumber(estimatedRewardMax)
+          : formatNumber(estimatedRewardMin)+"〜"+formatNumber(estimatedRewardMax))+"円です。"
+      );
+    }
   }
 
   if(workloadSchedule.primary){
     numbers.push(
       "作業量は「"+workloadPeriodLabel(workloadSchedule.period)+
-      workloadSchedule.quantity+"件」として認識し、納期とは分離して判定しています。"
+      workloadSchedule.quantity+(workloadSchedule.unit||"件")+"」として認識し、納期とは分離して判定しています。"
     );
+  }
+
+  if(workloadSchedule.characterCount){
+    numbers.push("記事文字数：約"+workloadSchedule.characterCount+"文字として認識しています。");
   }
 
   if(workloadSchedule.monthlyQuantity!==null && workloadSchedule.period!=="month"){
     numbers.push(
-      "作業量を月間換算すると約"+Math.round(workloadSchedule.monthlyQuantity*10)/10+"件です。"
+      "作業量を月間換算すると約"+Math.round(workloadSchedule.monthlyQuantity*10)/10+(workloadSchedule.unit||"件")+"です。"
     );
   }
 
@@ -2248,25 +2300,19 @@ function evaluateProject(){
       10
     );
 
-  if(
-    aiPolicy==="allowed" &&
-    contains(text,[
-      "canva",
-      "画像制作",
-      "画像デザイン",
-      "sns",
-      "instagram",
-      "素材選定",
-      "レイアウト"
-    ])
-  ){
-
-    ai+=3;
-
-    reasons.push(
-      "AI・デジタルツール活用との相性が良好です。"
-    );
-
+  if(aiPolicy==="allowed"){
+    const aiFriendlyTypes=[
+      "SNS画像制作","画像加工・編集","バナー・広告画像制作",
+      "LP・Webデザイン","動画編集","ライティング","データ入力・事務"
+    ];
+    if(aiFriendlyTypes.includes(projectType.name) ||
+       contains(text,["canva","画像制作","画像デザイン","sns","instagram","素材選定","レイアウト","記事執筆","webライター","文章"])){
+      ai=8;
+      reasons.push("AI利用が明示的に許可され、案件内容とも活用相性が良好です。");
+    }else{
+      ai=Math.max(ai,7);
+      reasons.push("AI利用が明示的に許可されています。");
+    }
   }
 
   if(aiPolicy==="prohibited"){
@@ -2344,16 +2390,18 @@ function evaluateProject(){
 
   if(
     contains(text,[
-      "スキマ時間",
-      "生活ペース",
-      "柔軟"
+      "柔軟に対応",
+      "柔軟なスケジュール",
+      "納期相談可能",
+      "スケジュール相談可能",
+      "作業時間自由"
     ])
   ){
 
     workload-=1;
 
     reasons.push(
-      "作業量やスケジュールに柔軟性があります。"
+      "募集文に、納期・作業時間を柔軟に調整できる旨の記載があります。"
     );
 
   }
@@ -2420,7 +2468,6 @@ function evaluateProject(){
     }
     else if(clientSignals.reviewCount===0){
       client-=1;
-      risk+=1;
       warnings.push(
         "レビュー実績がありません。"
       );
@@ -2439,7 +2486,6 @@ function evaluateProject(){
     }
     else if(clientSignals.orderHistory<=1){
       client-=1;
-      risk+=1;
       warnings.push(
         "募集実績が少ないです（"+clientSignals.orderHistory+"件）。"
       );
@@ -2448,7 +2494,6 @@ function evaluateProject(){
 
   if(unverified){
     client-=2;
-    risk+=1;
     warnings.push(
       "クライアント本人確認が未提出です。"
     );
@@ -2512,12 +2557,13 @@ function evaluateProject(){
 
   client=clamp(client,1,10);
 
-  /* 信頼度とリスクの最低整合ライン */
+  /* #36 信頼材料不足と危険行為を分離。
+     低信頼だけで「高リスク」にはしない。 */
   if(client<=2){
-    risk=Math.max(risk,7);
+    risk=Math.max(risk,4);
   }
   else if(client<=3){
-    risk=Math.max(risk,6);
+    risk=Math.max(risk,3);
   }
 
   risk=
@@ -3825,7 +3871,8 @@ function evaluateProject(){
       hasAiRule,
       aiPolicy,
       hasRights,
-      maxMoney
+      maxMoney,
+      projectType:projectType.name
 
     });
 
