@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MINERVA LAB | 案件判定ツール #37</title>
+<title>MINERVA LAB | 案件判定ツール #38</title>
 
 <style>
 
@@ -491,7 +491,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator #37 | 明示条件最優先・AI／作業時間抽出修正版
+Project Evaluator #38 | 報酬レンジ・初回数量・相対納期抽出強化版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -982,6 +982,16 @@ function analyzeCompensation(text){
   const itemUnitValues=[], characterUnitValues=[], monthlyValues=[], totalValues=[], testValues=[];
   let m;
 
+  /* #38: 「1本 4,000円〜30,000円」のような本契約レンジを優先抽出。
+     トライアル／テスト文脈は本契約報酬から除外する。 */
+  const itemRangeRegex=/1\s*(件|枚|本|投稿|記事|点|商品|画像|動画|ページ|カット)\s*(?:あたり|につき)?\s*[:：]?\s*(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円\s*(?:〜|～|~|-|－)\s*(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
+  while((m=itemRangeRegex.exec(normalized))!==null){
+    const before=normalized.slice(Math.max(0,m.index-35),m.index);
+    if(/(?:テスト|トライアル|お試し)/.test(before)) continue;
+    itemUnitValues.push(toYen(m[2],m[3]));
+    itemUnitValues.push(toYen(m[4],m[5]));
+  }
+
   /* 1件あたり500円 / 1記事500円 / ページ単価1,000円 等 */
   const perItemRegex=/(?:1\s*(件|枚|本|投稿|記事|点|商品|画像|動画|ページ|カット)\s*(?:あたり|につき)\s*[:：]?|(?:件|枚|本|投稿|記事|点|商品|画像|動画|ページ|カット)\s*単価\s*[:：]?)\s*(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
   while((m=perItemRegex.exec(normalized))!==null) itemUnitValues.push(toYen(m[2],m[3]));
@@ -1266,6 +1276,8 @@ function analyzeWorkloadSchedule(text){
     {re:new RegExp("合計\\s*(\\d+)\\s*("+unit.slice(3,-1)+")","g"), period:"total"},
     {re:/記事数\s*[:：]?\s*(\d+)\s*(記事)/g, period:"total"},
     {re:/(\d+)\s*(記事)\s*(?:作成|執筆|納品)/g, period:"total"},
+    /* #38: 「まずは1本ご依頼」「初回は1本」のような初回数量 */
+    {re:new RegExp("(?:まずは|初回(?:は|に)?|最初(?:は|に)?)[^。\\n]{0,30}?(\\d+)\\s*("+unit.slice(3,-1)+")[^。\\n]{0,20}?(?:依頼|お願い|発注|制作|納品)","g"), period:"total"},
     /* #37: 成果物：縦型ショート動画 1本 のような明示数量 */
     {re:new RegExp("(?:成果物|納品物|制作物|納品内容)\\s*[:：]?[^。\\n]{0,50}?(\\d+)\\s*("+unit.slice(3,-1)+")","g"), period:"total"}
   ];
@@ -1290,7 +1302,23 @@ function analyzeWorkloadSchedule(text){
   candidates.sort((a,b)=>(priority[b.period]||0)-(priority[a.period]||0));
   const primary=candidates[0]||null;
 
-  const deadline=detectConcreteDeadline(normalized);
+  let relativeDeadline=null;
+  m=normalized.match(/(?:素材|データ|原稿|指示|構成|資料)(?:の)?(?:共有|受領|支給|受け取り)(?:後|から)\s*(\d+)\s*(?:〜|～|~|-|－)\s*(\d+)\s*(営業日|日|時間)(?:程度|ほど|以内|前後)?/);
+  if(!m){
+    m=normalized.match(/(?:共有|受領|支給|受け取り)(?:後|から)\s*(\d+)\s*(?:〜|～|~|-|－)\s*(\d+)\s*(営業日|日|時間)(?:程度|ほど|以内|前後)?/);
+  }
+  if(m){
+    relativeDeadline={
+      min:parseInt(m[1]),
+      max:parseInt(m[2]),
+      unit:m[3],
+      label:"素材等の共有から"+m[1]+"〜"+m[2]+m[3]+"程度"
+    };
+  }
+
+  const deadline=relativeDeadline
+    ? {concrete:true,mention:true,label:relativeDeadline.label}
+    : detectConcreteDeadline(normalized);
   let deadlineKind="unknown", deadlineValue=null, deadlineLabel=deadline.label;
 
   m=normalized.match(/(?:1\s*(?:件|本|枚|商品|画像|動画|ページ|カット)|各\s*(?:件|本|枚|商品|画像|動画|ページ|カット))[\s\S]{0,25}?(\d+)\s*(営業日|日|時間)以内/);
@@ -1305,6 +1333,12 @@ function analyzeWorkloadSchedule(text){
       deadlineValue=parseInt(generalDeadline[1]);
       deadlineLabel="納期："+generalDeadline[1]+generalDeadline[2]+"以内";
     }
+  }
+
+  if(deadlineKind==="unknown" && relativeDeadline){
+    deadlineKind="relative";
+    deadlineValue=relativeDeadline.max;
+    deadlineLabel=relativeDeadline.label;
   }
 
   if(deadlineKind==="unknown" && /毎週\s*(?:月|火|水|木|金|土|日)曜/.test(normalized)){
@@ -1324,7 +1358,7 @@ function analyzeWorkloadSchedule(text){
     period: primary ? primary.period : null,
     monthlyQuantity: primary ? primary.monthly : null,
     characterCount: ((m=normalized.match(/(?:1記事あたりの文字数|文字数)\s*[:：]?\s*(\d+)\s*文字/)) ? parseInt(m[1]) : null),
-    deadlineKind, deadlineValue, deadlineLabel,
+    deadlineKind, deadlineValue, deadlineLabel, relativeDeadline,
     concreteDeadline: deadline
   };
 }
