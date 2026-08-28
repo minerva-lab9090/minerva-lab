@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MINERVA LAB | 案件判定ツール #39</title>
+<title>MINERVA LAB | 案件判定ツール #40</title>
 
 <style>
 
@@ -491,7 +491,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator #39 | ライティング案件・数値条件読解強化版
+Project Evaluator #40 | 低時給ゲート・応募整合性強化版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -3654,6 +3654,105 @@ function evaluateProject(){
     applicationMode=
       "blocked";
 
+  }
+
+  /* =========================
+     #40 低時給ゲート・応募整合性強化
+     標準ケースの推定時給が算出できる場合だけ適用する。
+     ・1,500円以上：制限なし
+     ・1,200〜1,499円：最高A
+     ・1,000〜1,199円：最高B
+     ・800〜999円：最高C
+     ・800円未満：最高D
+     総合スコア自体は残し、応募優先度・判定・推奨アクションの暴走を防ぐ。
+  ========================= */
+  if(salaryNormal!==null && Number.isFinite(salaryNormal)){
+
+    const rankOrder={S:5,A:4,B:3,C:2,D:1};
+
+    const capRank=(maxRank,title,detail,cssClass)=>{
+      if((rankOrder[rank]||0)>rankOrder[maxRank]){
+        rank=maxRank;
+        rankTitle=title;
+        rankDetail=detail;
+        rankClass=cssClass;
+      }
+    };
+
+    if(salaryNormal>=1500){
+      // 制限なし
+    }
+    else if(salaryNormal>=1200){
+      capRank(
+        "A",
+        "優先応募",
+        "条件は良好ですが、標準ケースの推定時給は約"+formatNumber(salaryNormal)+"円/時です。収益性を確認したうえで応募してください。",
+        "rank-a"
+      );
+      warnings.push(
+        "標準ケースの推定時給は約"+formatNumber(salaryNormal)+"円/時です。1,500円/時未満のため、応募優先度はAが上限です。"
+      );
+    }
+    else if(salaryNormal>=1000){
+      capRank(
+        "B",
+        "収益性を確認して応募",
+        "標準ケースの推定時給は約"+formatNumber(salaryNormal)+"円/時です。条件が良くても、時間対効果を考慮して応募優先度はBが上限です。",
+        "rank-b"
+      );
+
+      if(actionClass==="action-green"){
+        action="🟡 収益性を確認してから応募";
+        actionDetail="安全性や条件面は良好ですが、標準ケースの推定時給は約"+formatNumber(salaryNormal)+"円/時です。作業時間に見合うか確認したうえで応募してください。";
+        actionClass="action-yellow";
+        applicationMode="yellow";
+      }
+      if(cls==="green"){
+        decision="🟡 時給を確認して応募検討";
+        cls="yellow";
+      }
+      warnings.push(
+        "標準ケースの推定時給が1,200円/時未満です。表示報酬だけでなく、実作業時間を含めて応募判断してください。"
+      );
+    }
+    else if(salaryNormal>=800){
+      capRank(
+        "C",
+        "低時給のため比較優先",
+        "標準ケースの推定時給は約"+formatNumber(salaryNormal)+"円/時です。総合条件が良くても時間対効果が弱いため、応募優先度はCが上限です。",
+        "rank-c"
+      );
+
+      if(actionClass!=="action-red"){
+        action="🟠 低時給のため他案件と比較";
+        actionDetail="標準ケースの推定時給は約"+formatNumber(salaryNormal)+"円/時です。応募を急がず、より時間対効果の高い案件を優先してください。";
+        actionClass="action-orange";
+        applicationMode="blocked";
+      }
+      if(cls!=="red"){
+        decision="🟠 低時給・慎重に検討";
+        cls="orange";
+      }
+      warnings.push(
+        "標準ケースの推定時給が1,000円/時未満です。収益性の観点から優先応募は推奨しません。"
+      );
+    }
+    else{
+      rank="D";
+      rankTitle="低時給のため見送り";
+      rankDetail="標準ケースの推定時給は約"+formatNumber(salaryNormal)+"円/時です。時間対効果が低いため、応募優先度はDです。";
+      rankClass="rank-d";
+
+      action="🔴 低時給のため見送り";
+      actionDetail="標準ケースの推定時給が800円/時未満です。特別な実績価値などがない限り、より条件の良い案件を優先してください。";
+      actionClass="action-red";
+      applicationMode="blocked";
+      decision="🔴 低時給・見送り推奨";
+      cls="red";
+      warnings.push(
+        "標準ケースの推定時給が800円/時未満です。報酬に対して作業負担が大きい可能性があります。"
+      );
+    }
   }
 
   document
