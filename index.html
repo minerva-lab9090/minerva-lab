@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MINERVA LAB | 案件判定ツール #44</title>
+<title>MINERVA LAB | 案件判定ツール #45</title>
 
 <style>
 
@@ -491,7 +491,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator #44 修正版 | コンペ報酬・応募期限判定強化
+Project Evaluator #45 | CrowdWorks構造化抽出版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -973,9 +973,95 @@ function extractMoneyValues(text){
    ・「1,000円/商品」「3万円/月」等のスラッシュ表記にも対応
 ========================= */
 
+/* #45 CrowdWorks構造化抽出
+   表示順や改行位置に依存せず、契約形式・報酬・応募期限・提案人数を独立抽出する。 */
+function normalizeCrowdWorksText(text){
+  return String(text||"")
+    .replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0))
+    .replace(/，/g,",")
+    .replace(/￥|¥/g,"円");
+}
+
+function extractCrowdWorksStructure(text){
+  const t=normalizeCrowdWorksText(text);
+  const result={
+    contractType:null,
+    contestDisplayReward:null,
+    contractTaxExcluded:null,
+    applicationDeadline:null,
+    remainingHours:null,
+    proposalCount:null,
+    deliverableCount:null,
+    hasPrintSubmission:false
+  };
+
+  /* 「コンペ」が本文のどこにあっても契約形式として候補化。
+     CrowdWorksのコピーでは見出しと値が離れるため近接条件を要求しない。 */
+  if(/コンペ/.test(t)) result.contractType="contest";
+
+  /* CrowdWorks上部の表示報酬。コンペ語の近接に頼らず、
+     5,000円〜等の汎用予算より、単独の xx,xxx円 を候補化する。 */
+  const displayCandidates=[];
+  const rewardPatterns=[
+    /(?:報酬|コンペ報酬|契約金額)[^\n]{0,40}?([\d,]+)\s*円/g,
+    /(?:コンペ)[\s\S]{0,250}?([\d,]+)\s*円/g
+  ];
+  for(const rx of rewardPatterns){
+    let m;
+    while((m=rx.exec(t))!==null){
+      const v=parseInt(m[1].replace(/,/g,""),10);
+      if(Number.isFinite(v) && v>=300) displayCandidates.push(v);
+    }
+  }
+
+  const taxm=t.match(/契約金額\s*[（(]?\s*税抜\s*[）)]?\s*[:：]?\s*([0-9,.]+)\s*(万)?\s*円/);
+  if(taxm){
+    let v=parseFloat(taxm[1].replace(/,/g,""));
+    if(taxm[2]) v*=10000;
+    if(Number.isFinite(v) && v>0) result.contractTaxExcluded=Math.round(v);
+  }
+
+  if(result.contractType==="contest"){
+    /* 税抜2万円と税込22,000円が併記される典型形では表示額22,000円を優先。
+       表示額を直接拾えない場合は税抜額から税込目安を補完する。 */
+    const likelyContest=displayCandidates.filter(v=>v>=1000 && v<=10000000);
+    if(likelyContest.length) result.contestDisplayReward=Math.max(...likelyContest);
+    if(result.contractTaxExcluded){
+      const taxIncluded=Math.round(result.contractTaxExcluded*1.1);
+      if(!result.contestDisplayReward ||
+         Math.abs(result.contestDisplayReward-taxIncluded) <= Math.max(100, taxIncluded*0.03)){
+        result.contestDisplayReward=taxIncluded;
+      }
+    }
+  }
+
+  let m=t.match(/応募期限\s*[:：]?\s*(20\d{2})[年\/.-]\s*(\d{1,2})[月\/.-]\s*(\d{1,2})日?/);
+  if(m) result.applicationDeadline=`${m[1]}/${String(m[2]).padStart(2,"0")}/${String(m[3]).padStart(2,"0")}`;
+  m=t.match(/あと\s*(\d+)\s*時間/);
+  if(m) result.remainingHours=parseInt(m[1],10);
+
+  const proposalPatterns=[
+    /提案した人\s*[:：]?\s*(\d+)\s*人/,
+    /提案人数\s*[:：]?\s*(\d+)\s*人/,
+    /提案\s*[:：]?\s*(\d+)\s*人/
+  ];
+  for(const rx of proposalPatterns){
+    m=t.match(rx);
+    if(m){ result.proposalCount=parseInt(m[1],10); break; }
+  }
+
+  const hasFlyer=/チラシ|フライヤー/.test(t);
+  const hasSign=/看板|A1/.test(t);
+  if(hasFlyer && hasSign) result.deliverableCount=2;
+  result.hasPrintSubmission=/印刷会社.{0,20}入稿|入稿まで/.test(t);
+
+  return result;
+}
+
 /* #25 報酬・数量読み違い防止 */
 function analyzeCompensation(text){
-  const normalized=text
+  const cw=extractCrowdWorksStructure(text);
+  const normalized=normalizeCrowdWorksText(text)
     .replace(/[￥¥]\s*([\d,.]+)/g,"$1円")
     .replace(/([\d,.]+)\s*[￥¥]/g,"$1円");
   const toYen=(num,man)=>Math.round(parseFloat(String(num).replace(/,/g,""))*(man ? 10000 : 1));
@@ -1035,28 +1121,12 @@ function analyzeCompensation(text){
   const hourlyRegex=/(?:時間単価|時給)\s*[:：]?\s*(?:試用期間(?:は|：|:)?\s*)?(\d+(?:\.\d+)?(?:,\d{3})*)\s*円/g;
   while((m=hourlyRegex.exec(normalized))!==null) hourlyValues.push(toYen(m[1],null));
 
-  /* #44修正版: CrowdWorksの表・Markdown貼付でも「コンペ 22,000円」を拾う */
+  /* #45: コンペは構造化抽出結果を最優先 */
   const contestValues=[];
-  const isContestText=
-    /(?:^|[\s|])コンペ(?=$|[\s|：:])/m.test(normalized) ||
-    /仕事の概要[\s\S]{0,500}?コンペ/.test(normalized);
-
+  const isContestText=cw.contractType==="contest";
   if(isContestText){
-    const contestRegex=/コンペ[\s\S]{0,80}?([\d,]+)\s*(万)?\s*円/g;
-    while((m=contestRegex.exec(normalized))!==null){
-      const v=toYen(m[1],m[2]);
-      if(v>0) contestValues.push(v);
-    }
-
-    /* 【契約金額(税抜) 】２万円 のような全角数字・括弧後の記号にも対応 */
-    const contractTaxExcluded=normalized.match(/契約金額\s*[（(]税抜[）)][^\d０-９]{0,20}([０-９0-9,.]+)\s*(万)?\s*円/);
-    if(contractTaxExcluded){
-      const n=contractTaxExcluded[1]
-        .replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0))
-        .replace(/，/g,",");
-      const v=toYen(n,contractTaxExcluded[2]);
-      if(v>0) contestValues.push(v);
-    }
+    if(cw.contractTaxExcluded) contestValues.push(cw.contractTaxExcluded);
+    if(cw.contestDisplayReward) contestValues.push(cw.contestDisplayReward);
   }
 
   const monthlyRegex=/(?:月額(?:報酬)?|月収|月\s*報酬)\s*[:：]?\s*(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
@@ -1103,12 +1173,9 @@ function analyzeCompensation(text){
 
 function detectPaymentType(text){
 
-  if(/(?:時間単価|時給)\s*[:：]?[^。\n]{0,20}?[\d,]+\s*円/.test(text)) return "時間単価報酬";
-  const contestDetected=/(?:^|[\s|])コンペ(?=$|[\s|：:])/m.test(text) || /仕事の概要[\s\S]{0,500}?コンペ/.test(text);
-  if(contestDetected && (
-      /コンペ[\s\S]{0,80}?[\d,]+\s*(?:万)?\s*円/.test(text) ||
-      /契約金額\s*[（(]税抜[）)][^\d０-９]{0,20}[\d０-９,.]+\s*(?:万)?\s*円/.test(text)
-    )) return "コンペ報酬";
+  if(/(?:時間単価|時給)\s*[:：]?[^。\n]{0,20}?[\d,]+\s*円/.test(normalizeCrowdWorksText(text))) return "時間単価報酬";
+  const cw=extractCrowdWorksStructure(text);
+  if(cw.contractType==="contest" && (cw.contestDisplayReward || cw.contractTaxExcluded)) return "コンペ報酬";
 
   if(/(?:固定報酬|契約金額|契約額)[^。\n]{0,30}?[「『"']?\s*[\d,]+\s*円[」』"']?[^。\n]{0,30}?(?:入力|設定|記入|応募)/.test(text)){
     return "案件総額";
@@ -2205,6 +2272,9 @@ function evaluateProject(){
   const hasWorkTime=
     explicitWorkTime!==null;
 
+  const cwStructure=
+    extractCrowdWorksStructure(text);
+
   const compensation=
     analyzeCompensation(text);
 
@@ -2220,7 +2290,9 @@ function evaluateProject(){
   const quantity=
     workloadSchedule.quantity!==null
       ? workloadSchedule.quantity
-      : extractQuantity(text);
+      : (cwStructure.contractType==="contest" && cwStructure.deliverableCount
+          ? cwStructure.deliverableCount
+          : extractQuantity(text));
 
   const moneyValues=
     compensation.max>0
@@ -2333,6 +2405,22 @@ function evaluateProject(){
   }
 
   if(compensation.basis==="contest"){
+    if(cwStructure.contestDisplayReward){
+      numbers.push("CrowdWorks表示のコンペ報酬："+formatNumber(cwStructure.contestDisplayReward)+"円。");
+    }
+    if(cwStructure.contractTaxExcluded){
+      numbers.push("本文の契約金額（税抜）："+formatNumber(cwStructure.contractTaxExcluded)+"円。");
+    }
+    if(cwStructure.proposalCount!==null){
+      numbers.push("現在の提案人数："+cwStructure.proposalCount+"人。採用されなければ制作報酬は0円のため、通常案件の時給とは分けて判断します。");
+      competition=Math.min(10, Math.max(competition, cwStructure.proposalCount>=30 ? 9 : cwStructure.proposalCount>=20 ? 8 : cwStructure.proposalCount>=10 ? 7 : 5));
+    }
+    if(cwStructure.applicationDeadline){
+      numbers.push("コンペ応募期限："+cwStructure.applicationDeadline+(cwStructure.remainingHours!==null ? "（残り約"+cwStructure.remainingHours+"時間）" : "")+"。制作物の納品期限とは別に扱います。");
+      if(cwStructure.remainingHours!==null && cwStructure.remainingHours<=12){
+        warnings.push("コンペ応募期限まで残り約"+cwStructure.remainingHours+"時間です。制作・確認・入稿仕様の確認時間を考慮してください。");
+      }
+    }
     warnings.push("コンペ案件です。採用されない場合は制作時間に対する報酬が得られないため、通常の固定報酬案件とは分けて判断してください。");
     numbers.push("コンペ報酬として約"+formatNumber(compensation.max)+"円を認識しています。本文の税抜金額と概要の税込表示が併記される場合は、高い方を表示額として扱います。");
     const proposals=text.match(/提案した人[\s\S]{0,30}?(\d+)\s*人/);
@@ -3197,7 +3285,9 @@ function evaluateProject(){
       isDataCollectionProject
         ? "実際の依頼件数・最低件数・上限件数を確認してください。『歓迎』件数は必須量として扱いません。"
         : isContestProject
-          ? "チラシ・看板など、最終的に必要な成果物の点数と各サイズを確認してください。"
+          ? (cwStructure.deliverableCount
+              ? "チラシ・看板の成果物は認識済みです。印刷入稿用データの最終仕様を確認してください。"
+              : "チラシ・看板など、最終的に必要な成果物の点数と各サイズを確認してください。")
           : "月または1案件あたりの制作件数・枚数・本数を確認してください。"
     );
 
