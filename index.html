@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MINERVA LAB | 案件判定ツール #38</title>
+<title>MINERVA LAB | 案件判定ツール #39</title>
 
 <style>
 
@@ -491,7 +491,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator #38 | 報酬レンジ・初回数量・相対納期抽出強化版
+Project Evaluator #39 | ライティング案件・数値条件読解強化版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -993,11 +993,22 @@ function analyzeCompensation(text){
   }
 
   /* 1件あたり500円 / 1記事500円 / ページ単価1,000円 等 */
+  const isTestContext=(index)=>{
+    const before=normalized.slice(Math.max(0,index-40),index);
+    return /(?:初回\s*)?(?:テスト|トライアル|お試し)/.test(before);
+  };
+
   const perItemRegex=/(?:1\s*(件|枚|本|投稿|記事|点|商品|画像|動画|ページ|カット)\s*(?:あたり|につき)\s*[:：]?|(?:件|枚|本|投稿|記事|点|商品|画像|動画|ページ|カット)\s*単価\s*[:：]?)\s*(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
-  while((m=perItemRegex.exec(normalized))!==null) itemUnitValues.push(toYen(m[2],m[3]));
+  while((m=perItemRegex.exec(normalized))!==null){
+    if(isTestContext(m.index)) continue;
+    itemUnitValues.push(toYen(m[2],m[3]));
+  }
 
   const directItemRegex=/1\s*(件|枚|本|投稿|記事|点|商品|画像|動画|ページ|カット)\s*[:：]?\s*(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
-  while((m=directItemRegex.exec(normalized))!==null) itemUnitValues.push(toYen(m[2],m[3]));
+  while((m=directItemRegex.exec(normalized))!==null){
+    if(isTestContext(m.index)) continue;
+    itemUnitValues.push(toYen(m[2],m[3]));
+  }
 
   const slashUnitRegex=/(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円\s*(?:～|~|〜|-)?\s*[\/／]\s*(件|枚|本|投稿|記事|点|商品|画像|動画|ページ|カット|文字)/g;
   while((m=slashUnitRegex.exec(normalized))!==null){
@@ -1018,7 +1029,7 @@ function analyzeCompensation(text){
   const slashMonthlyRegex=/(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円\s*[\/／]\s*(?:月|月額)/g;
   while((m=slashMonthlyRegex.exec(normalized))!==null) monthlyValues.push(toYen(m[1],m[2]));
 
-  const testRegex=/(?:テスト|トライアル|お試し)[\s\S]{0,30}?(?:報酬|料金)?\s*[:：]?\s*(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
+  const testRegex=/(?:初回\s*)?(?:テスト|トライアル|お試し)[\s\S]{0,35}?(?:報酬|料金)?[\s\S]{0,12}?(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
   while((m=testRegex.exec(normalized))!==null) testValues.push(toYen(m[1],m[2]));
 
   const totalRegex=/(?:固定報酬制|契約金額|報酬総額|案件総額|予算)\s*[:：]?\s*(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
@@ -1316,9 +1327,13 @@ function analyzeWorkloadSchedule(text){
     };
   }
 
+  const headingRangeDeadline=normalized.match(/(?:納期|納品期限|締切)\s*[:：]?\s*(\d+)\s*(営業日|日|時間)\s*(?:〜|～|~|-|－)\s*(\d+)\s*\2(?:程度|ほど|前後|以内)?/);
+
   const deadline=relativeDeadline
     ? {concrete:true,mention:true,label:relativeDeadline.label}
-    : detectConcreteDeadline(normalized);
+    : headingRangeDeadline
+      ? {concrete:true,mention:true,label:"納期："+headingRangeDeadline[1]+headingRangeDeadline[2]+"〜"+headingRangeDeadline[3]+headingRangeDeadline[2]}
+      : detectConcreteDeadline(normalized);
   let deadlineKind="unknown", deadlineValue=null, deadlineLabel=deadline.label;
 
   m=normalized.match(/(?:1\s*(?:件|本|枚|商品|画像|動画|ページ|カット)|各\s*(?:件|本|枚|商品|画像|動画|ページ|カット))[\s\S]{0,25}?(\d+)\s*(営業日|日|時間)以内/);
@@ -1327,11 +1342,18 @@ function analyzeWorkloadSchedule(text){
     deadlineValue=parseInt(m[1]);
     deadlineLabel="1件ごとの納期："+m[1]+m[2]+"以内";
   }else{
-    const generalDeadline=normalized.match(/(?:納期|納品期限|締切)[\s\S]{0,20}?(\d+)\s*(営業日|日|時間)以内/);
-    if(generalDeadline){
+    const generalRangeDeadline=normalized.match(/(?:納期|納品期限|締切)\s*[:：]?\s*(\d+)\s*(営業日|日|時間)\s*(?:〜|～|~|-|－)\s*(\d+)\s*\2(?:程度|ほど|前後|以内)?/);
+    if(generalRangeDeadline){
       deadlineKind="fixed";
-      deadlineValue=parseInt(generalDeadline[1]);
-      deadlineLabel="納期："+generalDeadline[1]+generalDeadline[2]+"以内";
+      deadlineValue=parseInt(generalRangeDeadline[3]);
+      deadlineLabel="納期："+generalRangeDeadline[1]+generalRangeDeadline[2]+"〜"+generalRangeDeadline[3]+generalRangeDeadline[2];
+    }else{
+      const generalDeadline=normalized.match(/(?:納期|納品期限|締切)[\s\S]{0,20}?(\d+)\s*(営業日|日|時間)以内/);
+      if(generalDeadline){
+        deadlineKind="fixed";
+        deadlineValue=parseInt(generalDeadline[1]);
+        deadlineLabel="納期："+generalDeadline[1]+generalDeadline[2]+"以内";
+      }
     }
   }
 
@@ -1357,7 +1379,11 @@ function analyzeWorkloadSchedule(text){
     unit: primary ? primary.unit : null,
     period: primary ? primary.period : null,
     monthlyQuantity: primary ? primary.monthly : null,
-    characterCount: ((m=normalized.match(/(?:1記事あたりの文字数|文字数)\s*[:：]?\s*(\d+)\s*文字/)) ? parseInt(m[1]) : null),
+    characterCount: (()=>{
+      let cm=normalized.match(/(?:1記事あたりの文字数|文字数)\s*[:：]?\s*([\d,]+)\s*(?:文字|字)(?:以上|程度|前後)?/);
+      if(!cm) cm=normalized.match(/(?:^|[\s【\[])([\d,]{3,})\s*(?:文字|字)\s*(?:以上|程度|前後)/);
+      return cm ? parseInt(cm[1].replace(/,/g,"")) : null;
+    })(),
     deadlineKind, deadlineValue, deadlineLabel, relativeDeadline,
     concreteDeadline: deadline
   };
@@ -1727,6 +1753,24 @@ function extractExplicitWorkTime(text){
   return null;
 }
 
+/* #39: ライティング案件は文字数を工数推定へ反映。
+   6500字級を30〜120分と過小評価しない。 */
+function estimateWritingTimeFromCharacters(projectType,characterCount){
+  if(!projectType || projectType.name!=="ライティング" || !characterCount) return null;
+
+  const thousands=characterCount/1000;
+  const fast=Math.max(30,thousands*25);
+  const normal=Math.max(45,thousands*45);
+  const slow=Math.max(75,thousands*70);
+
+  return{
+    fast,
+    normal,
+    slow,
+    source:"文字数ベース推定"
+  };
+}
+
 function setSummaryCard(
   boxId,
   scoreId,
@@ -2084,7 +2128,9 @@ function evaluateProject(){
   const calculationQuantity=
     workloadSchedule.monthlyQuantity!==null
       ? workloadSchedule.monthlyQuantity
-      : quantity;
+      : quantity!==null
+        ? quantity
+        : (workloadSchedule.characterCount && compensation.basis==="unit" ? 1 : null);
 
   const characterMultiplier=
     compensation.unitKind==="character" && workloadSchedule.characterCount
@@ -2126,6 +2172,13 @@ function evaluateProject(){
   }
 
   if(compensation.basis==="unit" && calculationQuantity){
+    if(compensation.unitKind==="item" && workloadSchedule.characterCount && projectType.name==="ライティング"){
+      numbers.push(
+        "本契約単価は約"+formatNumber(minMoney)+
+        (minMoney===maxMoney ? "" : "〜"+formatNumber(maxMoney))+
+        "円/本、文字数は"+formatNumber(workloadSchedule.characterCount)+"字以上として認識しています。"
+      );
+    }
     if(compensation.unitKind==="character" && workloadSchedule.characterCount){
       numbers.push(
         "文字単価"+minMoney+"円、約"+workloadSchedule.characterCount+"文字×"+calculationQuantity+(workloadSchedule.unit||"件")+
@@ -2152,7 +2205,7 @@ function evaluateProject(){
   }
 
   if(workloadSchedule.characterCount){
-    numbers.push("記事文字数：約"+workloadSchedule.characterCount+"文字として認識しています。");
+    numbers.push("記事文字数："+formatNumber(workloadSchedule.characterCount)+"字以上として認識しています。");
   }
 
   if(workloadSchedule.monthlyQuantity!==null && workloadSchedule.period!=="month"){
@@ -2170,7 +2223,7 @@ function evaluateProject(){
   }
 
   const hasQuantity=
-    quantity!==null;
+    quantity!==null || workloadSchedule.characterCount!==null;
 
   const hasDeadline=
     concreteDeadline.concrete;
@@ -2440,6 +2493,18 @@ function evaluateProject(){
     workloadSchedule.monthlyQuantity!==null
       ? workloadSchedule.monthlyQuantity
       : quantity;
+
+  if(workloadSchedule.characterCount!==null){
+    if(workloadSchedule.characterCount>=8000){
+      workload+=3;
+      difficulty+=2;
+    }else if(workloadSchedule.characterCount>=6000){
+      workload+=2;
+      difficulty+=1;
+    }else if(workloadSchedule.characterCount>=3000){
+      workload+=1;
+    }
+  }
 
   if(workloadQuantity!==null){
 
@@ -2741,21 +2806,26 @@ function evaluateProject(){
   let salaryNormal=null;
   let salarySlow=null;
 
+  const writingTimeEstimate=
+    estimateWritingTimeFromCharacters(projectType,workloadSchedule.characterCount);
+
   const estimatedMinutes=explicitWorkTime
     ? {
-        fast:Math.max(1,explicitWorkTime.minutes*0.8),
-        normal:explicitWorkTime.minutes,
-        slow:explicitWorkTime.minutes*1.3,
+        fast:explicitWorkTime.fastMinutes || explicitWorkTime.minutes,
+        normal:explicitWorkTime.normalMinutes || explicitWorkTime.minutes,
+        slow:explicitWorkTime.slowMinutes || explicitWorkTime.minutes,
         source:"募集文・確認回答"
       }
-    : projectType.confidenceKey!=="low"
-      ? {
-          fast:projectType.fast,
-          normal:projectType.normal,
-          slow:projectType.slow,
-          source:projectType.confidenceKey==="high" ? "案件タイプ推定" : "参考推定"
-        }
-      : null;
+    : writingTimeEstimate
+      ? writingTimeEstimate
+      : projectType.confidenceKey!=="low"
+        ? {
+            fast:projectType.fast,
+            normal:projectType.normal,
+            slow:projectType.slow,
+            source:projectType.confidenceKey==="high" ? "案件タイプ推定" : "参考推定"
+          }
+        : null;
 
   const canEstimateTime=estimatedMinutes!==null;
   const canEstimateMoney=compensation.basis!=="unknown";
@@ -2945,6 +3015,10 @@ function evaluateProject(){
       "月または1案件あたりの制作件数・枚数・本数を確認してください。"
     );
 
+  }else if(projectType.name==="ライティング" && workloadSchedule.characterCount && quantity===null){
+    checks.push(
+      "継続時の月間本数が未記載の場合は、月あたりの想定本数を確認してください。"
+    );
   }
 
   if(!hasDeadline){
@@ -3686,11 +3760,13 @@ function evaluateProject(){
     hasQuantity ? "ok":"ng",
     hasQuantity
       ? (workloadSchedule.primary
-          ? workloadPeriodLabel(workloadSchedule.period)+quantity+"件"+
+          ? workloadPeriodLabel(workloadSchedule.period)+quantity+(workloadSchedule.unit||"件")+
             (workloadSchedule.monthlyQuantity!==null && workloadSchedule.period!=="month"
-              ? "（月換算 約"+Math.round(workloadSchedule.monthlyQuantity*10)/10+"件）"
+              ? "（月換算 約"+Math.round(workloadSchedule.monthlyQuantity*10)/10+(workloadSchedule.unit||"件")+"）"
               : "")
-          : quantity+"件")
+          : workloadSchedule.characterCount
+            ? workloadSchedule.characterCount+"字以上"
+            : quantity+"件")
       : "具体的な作業量不明"
   );
 
