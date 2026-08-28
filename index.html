@@ -491,7 +491,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator #44 | 実案件4種・契約形態判定強化版
+Project Evaluator #44 修正版 | コンペ報酬・応募期限判定強化
 </div>
 
 <h2>案件内容を入力</h2>
@@ -1035,13 +1035,28 @@ function analyzeCompensation(text){
   const hourlyRegex=/(?:時間単価|時給)\s*[:：]?\s*(?:試用期間(?:は|：|:)?\s*)?(\d+(?:\.\d+)?(?:,\d{3})*)\s*円/g;
   while((m=hourlyRegex.exec(normalized))!==null) hourlyValues.push(toYen(m[1],null));
 
+  /* #44修正版: CrowdWorksの表・Markdown貼付でも「コンペ 22,000円」を拾う */
   const contestValues=[];
-  const contestRegex=/(?:コンペ)[^。\n]{0,25}?(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
-  while((m=contestRegex.exec(normalized))!==null) contestValues.push(toYen(m[1],m[2]));
-  const contractTaxExcluded=normalized.match(/契約金額\s*\(税抜\)\s*[:：]?\s*([０-９0-9,.]+)\s*(万)?\s*円/);
-  if(contractTaxExcluded){
-    const n=contractTaxExcluded[1].replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
-    contestValues.push(toYen(n,contractTaxExcluded[2]));
+  const isContestText=
+    /(?:^|[\s|])コンペ(?=$|[\s|：:])/m.test(normalized) ||
+    /仕事の概要[\s\S]{0,500}?コンペ/.test(normalized);
+
+  if(isContestText){
+    const contestRegex=/コンペ[\s\S]{0,80}?([\d,]+)\s*(万)?\s*円/g;
+    while((m=contestRegex.exec(normalized))!==null){
+      const v=toYen(m[1],m[2]);
+      if(v>0) contestValues.push(v);
+    }
+
+    /* 【契約金額(税抜) 】２万円 のような全角数字・括弧後の記号にも対応 */
+    const contractTaxExcluded=normalized.match(/契約金額\s*[（(]税抜[）)][^\d０-９]{0,20}([０-９0-9,.]+)\s*(万)?\s*円/);
+    if(contractTaxExcluded){
+      const n=contractTaxExcluded[1]
+        .replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0))
+        .replace(/，/g,",");
+      const v=toYen(n,contractTaxExcluded[2]);
+      if(v>0) contestValues.push(v);
+    }
   }
 
   const monthlyRegex=/(?:月額(?:報酬)?|月収|月\s*報酬)\s*[:：]?\s*(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
@@ -1062,7 +1077,7 @@ function analyzeCompensation(text){
   let basis="unknown", values=[], unitKind=null;
 
   if(hourlyValues.length){ basis="hourly"; values=hourlyValues; }
-  else if(/(?:^|\s|\|)コンペ(?:\s|$|\|)/.test(normalized) && contestValues.length){ basis="contest"; values=contestValues; }
+  else if(isContestText && contestValues.length){ basis="contest"; values=contestValues; }
   else if(explicitContractValues.length){ basis="total"; values=explicitContractValues; }
   else if(itemUnitValues.length){ basis="unit"; values=itemUnitValues; unitKind="item"; }
   else if(characterUnitValues.length){ basis="unit"; values=characterUnitValues; unitKind="character"; }
@@ -1089,7 +1104,11 @@ function analyzeCompensation(text){
 function detectPaymentType(text){
 
   if(/(?:時間単価|時給)\s*[:：]?[^。\n]{0,20}?[\d,]+\s*円/.test(text)) return "時間単価報酬";
-  if(/(?:^|\s|\|)コンペ(?:\s|$|\|)/.test(text) && /(?:契約金額|コンペ)[^。\n]{0,30}?[\d０-９,.]+\s*(?:万)?\s*円/.test(text)) return "コンペ報酬";
+  const contestDetected=/(?:^|[\s|])コンペ(?=$|[\s|：:])/m.test(text) || /仕事の概要[\s\S]{0,500}?コンペ/.test(text);
+  if(contestDetected && (
+      /コンペ[\s\S]{0,80}?[\d,]+\s*(?:万)?\s*円/.test(text) ||
+      /契約金額\s*[（(]税抜[）)][^\d０-９]{0,20}[\d０-９,.]+\s*(?:万)?\s*円/.test(text)
+    )) return "コンペ報酬";
 
   if(/(?:固定報酬|契約金額|契約額)[^。\n]{0,30}?[「『"']?\s*[\d,]+\s*円[」』"']?[^。\n]{0,30}?(?:入力|設定|記入|応募)/.test(text)){
     return "案件総額";
@@ -2315,10 +2334,10 @@ function evaluateProject(){
 
   if(compensation.basis==="contest"){
     warnings.push("コンペ案件です。採用されない場合は制作時間に対する報酬が得られないため、通常の固定報酬案件とは分けて判断してください。");
-    const proposals=text.match(/提案した人[\s\S]{0,20}?(\d+)\s*人/);
+    numbers.push("コンペ報酬として約"+formatNumber(compensation.max)+"円を認識しています。本文の税抜金額と概要の税込表示が併記される場合は、高い方を表示額として扱います。");
+    const proposals=text.match(/提案した人[\s\S]{0,30}?(\d+)\s*人/);
     if(proposals){ numbers.push("コンペ提案者は現時点で"+proposals[1]+"人です。報酬額だけでなく採用確率も考慮してください。"); }
-    const deadline=text.match(/応募期限\s*(?:まで)?[^\d]{0,15}(2026年\d{1,2}月\d{1,2}日|あと\s*\d+\s*時間)/);
-    if(deadline) numbers.push("コンペの応募期限を検出しました："+deadline[1]+"。");
+    if(contestDeadlineLabel) numbers.push("コンペ応募期限："+contestDeadlineLabel+"。制作物の納品期限とは別条件として扱います。");
   }
   if(/チラシサイズ[^。\n]*看板サイズ|チラシ[^。\n]{0,60}看板/.test(text)){
     numbers.push("複数成果物（チラシ＋看板）を含む案件として認識しています。");
@@ -2391,6 +2410,17 @@ function evaluateProject(){
   const isDataCollectionProject=projectType.name==="データ検索・データ収集";
   const isHourlyProject=compensation.basis==="hourly";
   const isContestProject=compensation.basis==="contest";
+  const contestDeadlineDateMatch=isContestProject
+    ? text.match(/応募期限[\s|：:]{0,40}(20\d{2}年\s*\d{1,2}月\s*\d{1,2}日)/)
+    : null;
+  const contestDeadlineHoursMatch=isContestProject
+    ? text.match(/応募期限まで[\s\S]{0,40}?あと\s*(\d+)\s*時間/)
+    : null;
+  const contestDeadlineLabel=contestDeadlineDateMatch
+    ? contestDeadlineDateMatch[1].replace(/\s+/g,"")
+    : contestDeadlineHoursMatch
+      ? "あと"+contestDeadlineHoursMatch[1]+"時間"
+      : null;
   const effectiveHasDeadline=(isSurveyProject || isHourlyProject) ? true : hasDeadline;
   const effectiveHasRevision=(isSurveyProject || isDataCollectionProject || isHourlyProject) ? true : hasRevision;
   const effectiveHasAiRule=(isSurveyProject || isDataCollectionProject) ? true : hasAiRule;
@@ -3180,7 +3210,9 @@ function evaluateProject(){
   if(!effectiveHasDeadline){
 
     checks.push(
-      "具体的な納品期限、1回ごとの締切、制作スケジュールを確認してください。"
+      isContestProject && contestDeadlineLabel
+        ? "コンペ応募期限は確認済みです。採用後の制作納期・入稿期限を確認してください。"
+        : "具体的な納品期限、1回ごとの締切、制作スケジュールを確認してください。"
     );
 
   }
@@ -4033,7 +4065,11 @@ function evaluateProject(){
         ? "単価報酬"
         : compensation.basis==="monthly"
           ? "月額報酬"
-          : "案件総額"
+          : compensation.basis==="hourly"
+            ? "時間単価報酬"
+            : compensation.basis==="contest"
+              ? "コンペ報酬"
+              : "案件総額"
     );
   }
 
@@ -4071,6 +4107,15 @@ function evaluateProject(){
       "deadlineStatus",
       "hold",
       concreteDeadline.label
+    );
+
+  }
+  else if(isContestProject && contestDeadlineLabel){
+
+    setStatus(
+      "deadlineStatus",
+      "hold",
+      "制作納期は要確認／コンペ応募期限："+contestDeadlineLabel
     );
 
   }
