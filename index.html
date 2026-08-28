@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MINERVA LAB | 案件判定ツール #47R</title>
+<title>MINERVA LAB | 案件判定ツール #48</title>
 
 <style>
 
@@ -491,7 +491,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator #47R | 緊急安定復旧版
+Project Evaluator #48 | コンペ最小修正版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -2234,6 +2234,36 @@ function evaluateProject(){
           note:"コンペ報酬（税抜契約金額から税込表示額を補完）"
         };
       }
+    }
+  }
+
+  /* #48 最小修正: 入力・採点ボタン・描画には触れない */
+  if(
+    compensation.basis==="unknown" &&
+    /(?:チラシ|フライヤー|看板|ポスター|ロゴ|バナー)/.test(text) &&
+    /(?:提案した人|提案人数|コンペ)/.test(text)
+  ){
+    const contestAmounts=[...text.matchAll(/([0-9０-９][0-9０-９,，]{2,})\s*円/g)]
+      .map(m=>parseInt(
+        m[1]
+          .replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0))
+          .replace(/[，,]/g,""),
+        10
+      ))
+      .filter(v=>Number.isFinite(v) && v>=1000 && v<=10000000);
+
+    if(contestAmounts.length){
+      const contestMoney=Math.max(...contestAmounts);
+      compensation={
+        ...compensation,
+        basis:"contest",
+        label:"コンペ報酬",
+        min:contestMoney,
+        max:contestMoney,
+        values:[contestMoney],
+        unitKind:"project",
+        note:"CrowdWorksコンペ構造から補正"
+      };
     }
   }
 
