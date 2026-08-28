@@ -491,7 +491,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator #43 | アンケート・修正条件判定強化版
+Project Evaluator #44 | 実案件4種・契約形態判定強化版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -1031,6 +1031,19 @@ function analyzeCompensation(text){
   const charUnitRegex=/(?:文字単価)\s*[:：]?\s*(\d+(?:\.\d+)?)\s*円/g;
   while((m=charUnitRegex.exec(normalized))!==null) characterUnitValues.push(parseFloat(m[1]));
 
+  const hourlyValues=[];
+  const hourlyRegex=/(?:時間単価|時給)\s*[:：]?\s*(?:試用期間(?:は|：|:)?\s*)?(\d+(?:\.\d+)?(?:,\d{3})*)\s*円/g;
+  while((m=hourlyRegex.exec(normalized))!==null) hourlyValues.push(toYen(m[1],null));
+
+  const contestValues=[];
+  const contestRegex=/(?:コンペ)[^。\n]{0,25}?(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
+  while((m=contestRegex.exec(normalized))!==null) contestValues.push(toYen(m[1],m[2]));
+  const contractTaxExcluded=normalized.match(/契約金額\s*\(税抜\)\s*[:：]?\s*([０-９0-9,.]+)\s*(万)?\s*円/);
+  if(contractTaxExcluded){
+    const n=contractTaxExcluded[1].replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+    contestValues.push(toYen(n,contractTaxExcluded[2]));
+  }
+
   const monthlyRegex=/(?:月額(?:報酬)?|月収|月\s*報酬)\s*[:：]?\s*(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
   while((m=monthlyRegex.exec(normalized))!==null) monthlyValues.push(toYen(m[1],m[2]));
 
@@ -1048,7 +1061,9 @@ function analyzeCompensation(text){
   const excluded=[...unitValues,...monthlyValues,...totalValues,...testValues];
   let basis="unknown", values=[], unitKind=null;
 
-  if(explicitContractValues.length){ basis="total"; values=explicitContractValues; }
+  if(hourlyValues.length){ basis="hourly"; values=hourlyValues; }
+  else if(/(?:^|\s|\|)コンペ(?:\s|$|\|)/.test(normalized) && contestValues.length){ basis="contest"; values=contestValues; }
+  else if(explicitContractValues.length){ basis="total"; values=explicitContractValues; }
   else if(itemUnitValues.length){ basis="unit"; values=itemUnitValues; unitKind="item"; }
   else if(characterUnitValues.length){ basis="unit"; values=characterUnitValues; unitKind="character"; }
   else if(monthlyValues.length){ basis="monthly"; values=monthlyValues; }
@@ -1065,13 +1080,16 @@ function analyzeCompensation(text){
   const positive=values.filter(v=>v>0);
   const min=positive.length ? Math.min(...positive) : 0;
   const max=positive.length ? Math.max(...positive) : 0;
-  let label=basis==="unit" ? (unitKind==="character" ? "文字単価報酬" : "単価報酬") : basis==="monthly" ? "月額報酬" : basis==="total" ? "案件総額" : "判定困難";
+  let label=basis==="hourly" ? "時間単価報酬" : basis==="contest" ? "コンペ報酬" : basis==="unit" ? (unitKind==="character" ? "文字単価報酬" : "単価報酬") : basis==="monthly" ? "月額報酬" : basis==="total" ? "案件総額" : "判定困難";
   if(testValues.length) label+="（テスト報酬は別枠で検出）";
 
-  return{basis,label,min,max,unitKind,unitValues,itemUnitValues,characterUnitValues,monthlyValues,totalValues,testValues,explicitContractValues};
+  return{basis,label,min,max,unitKind,unitValues,itemUnitValues,characterUnitValues,monthlyValues,totalValues,testValues,explicitContractValues,hourlyValues,contestValues};
 }
 
 function detectPaymentType(text){
+
+  if(/(?:時間単価|時給)\s*[:：]?[^。\n]{0,20}?[\d,]+\s*円/.test(text)) return "時間単価報酬";
+  if(/(?:^|\s|\|)コンペ(?:\s|$|\|)/.test(text) && /(?:契約金額|コンペ)[^。\n]{0,30}?[\d０-９,.]+\s*(?:万)?\s*円/.test(text)) return "コンペ報酬";
 
   if(/(?:固定報酬|契約金額|契約額)[^。\n]{0,30}?[「『"']?\s*[\d,]+\s*円[」』"']?[^。\n]{0,30}?(?:入力|設定|記入|応募)/.test(text)){
     return "案件総額";
@@ -1156,6 +1174,7 @@ function analyzeClientTrust(text){
   let reviewCount=null;
   let rating=null;
   let orderHistory=null;
+  let completionRate=null;
 
   let m=normalized.match(/(?:評価|総合評価)\s*[:：]?\s*([0-5](?:\.\d+)?)/);
   if(m) rating=parseFloat(m[1]);
@@ -1169,6 +1188,9 @@ function analyzeClientTrust(text){
 
   m=normalized.match(/募集実績\s*[:：]?\s*(\d+)\s*件/);
   if(m) orderHistory=parseInt(m[1]);
+
+  m=normalized.match(/プロジェクト完了率\s*[:：]?\s*(\d+)\s*%/);
+  if(m) completionRate=parseInt(m[1]);
 
   const externalService=
     contains(normalized,[
@@ -1250,6 +1272,7 @@ function analyzeClientTrust(text){
     reviewCount,
     rating,
     orderHistory,
+    completionRate,
     externalService,
     preContractExternal,
     postContractExternal,
@@ -1349,6 +1372,17 @@ function analyzeWorkloadSchedule(text){
   for(const p of loose){
     while((m=p.re.exec(normalized))!==null){
       if(!candidates.some(x=>x.raw===m[0])) add(m[1],p.period,m[0],m[2]||"件");
+    }
+  }
+
+  /* #44: 「歓迎」「可能な方」「目安」等は必須作業量として扱わない */
+  const optionalQuantityContext=/(?:歓迎|可能な方|できる方歓迎|目安|推奨|できれば|希望)/;
+  for(let i=candidates.length-1;i>=0;i--){
+    const c=candidates[i];
+    const idx=normalized.indexOf(c.raw);
+    if(idx>=0){
+      const around=normalized.slice(Math.max(0,idx-25),Math.min(normalized.length,idx+c.raw.length+35));
+      if(optionalQuantityContext.test(around)) candidates.splice(i,1);
     }
   }
 
@@ -1627,6 +1661,18 @@ function detectProjectType(text){
       fast:90, normal:180, slow:360,
       strong:["漫画制作","漫画作成","漫画の制作","漫画イラストレーター","sns漫画","コミック制作","ネーム・清書","ネーム作成"],
       medium:["漫画","マンガ","イラスト作成","イラスト制作","イラストレーター","コマ割り","清書","ネーム","グレースケール","表情差分"]
+    },
+    {
+      name:"データ検索・データ収集",
+      fast:3, normal:5, slow:10,
+      strong:["データ検索・データ収集","データ収集","配信者リスト","リストアップ","リストへ登録","情報収集・リスト作成"],
+      medium:["配信者を探","条件に合う配信者","収集対象","リスト収集","データ検索","リサーチ","リスト作成"]
+    },
+    {
+      name:"広告動画・広告クリエイティブ制作",
+      fast:60, normal:120, slow:240,
+      strong:["広告動画","広告用の動画","動画クリエイティブ制作","広告クリエイティブ制作","amazon広告用","facebook・instagram・amazon広告"],
+      medium:["広告クリエイティブ","動画クリエイティブ","動画構成・改善","広告用動画","画像クリエイティブ","バナー・レイアウト調整"]
     },
     {
       name:"SNS画像制作",
@@ -2267,6 +2313,22 @@ function evaluateProject(){
     numbers.push("納期判定："+workloadSchedule.deadlineLabel+"。");
   }
 
+  if(compensation.basis==="contest"){
+    warnings.push("コンペ案件です。採用されない場合は制作時間に対する報酬が得られないため、通常の固定報酬案件とは分けて判断してください。");
+    const proposals=text.match(/提案した人[\s\S]{0,20}?(\d+)\s*人/);
+    if(proposals){ numbers.push("コンペ提案者は現時点で"+proposals[1]+"人です。報酬額だけでなく採用確率も考慮してください。"); }
+    const deadline=text.match(/応募期限\s*(?:まで)?[^\d]{0,15}(2026年\d{1,2}月\d{1,2}日|あと\s*\d+\s*時間)/);
+    if(deadline) numbers.push("コンペの応募期限を検出しました："+deadline[1]+"。");
+  }
+  if(/チラシサイズ[^。\n]*看板サイズ|チラシ[^。\n]{0,60}看板/.test(text)){
+    numbers.push("複数成果物（チラシ＋看板）を含む案件として認識しています。");
+    workload=Math.min(10,workload+1);
+  }
+  if(/印刷会社に入稿|入稿まで/.test(text)){
+    warnings.push("印刷会社への入稿作業を含みます。塗り足し・カラーモード・解像度・入稿テンプレート等の仕様確認が必要です。");
+    workload=Math.min(10,workload+1);
+  }
+
   if(compensation.basis==="unknown" && hasSalary){
     warnings.push("金額は検出しましたが、月額・単価・案件総額のどれかを確定できません。報酬の適用範囲を確認してください。");
   }
@@ -2326,10 +2388,13 @@ function evaluateProject(){
     aiPolicy==="prohibited";
 
   const isSurveyProject=projectType.name==="質問・アンケート";
-  const effectiveHasDeadline=isSurveyProject ? true : hasDeadline;
-  const effectiveHasRevision=isSurveyProject ? true : hasRevision;
-  const effectiveHasAiRule=isSurveyProject ? true : hasAiRule;
-  const effectiveHasRights=isSurveyProject ? true : hasRights;
+  const isDataCollectionProject=projectType.name==="データ検索・データ収集";
+  const isHourlyProject=compensation.basis==="hourly";
+  const isContestProject=compensation.basis==="contest";
+  const effectiveHasDeadline=(isSurveyProject || isHourlyProject) ? true : hasDeadline;
+  const effectiveHasRevision=(isSurveyProject || isDataCollectionProject || isHourlyProject) ? true : hasRevision;
+  const effectiveHasAiRule=(isSurveyProject || isDataCollectionProject) ? true : hasAiRule;
+  const effectiveHasRights=(isSurveyProject || isDataCollectionProject) ? true : hasRights;
 
   const confirmedConditionCount=
     [
@@ -2467,6 +2532,11 @@ function evaluateProject(){
       "初心者・未経験でも応募可能です。"
     );
 
+  }
+
+  if(/(?:制作実務経験|実務経験)[^。\n]{0,20}(?:必須|必要)/.test(text) || /ポートフォリオ[^。\n]{0,20}(?:必須|提出)/.test(text)){
+    difficulty+=2;
+    reasons.push("制作実務経験・ポートフォリオ等の応募条件があり、初心者向けではありません。");
   }
 
   if(
@@ -2657,10 +2727,21 @@ function evaluateProject(){
     else if(clientSignals.rating<3.5){
       client-=2;
       risk+=2;
-      warnings.push(
-        "クライアント評価が低めです（"+clientSignals.rating.toFixed(1)+" / 5）。レビュー内容の確認を推奨します。"
-      );
+      warnings.push("クライアント評価が低めです（"+clientSignals.rating.toFixed(1)+" / 5）。レビュー内容の確認を推奨します。");
     }
+    else if(clientSignals.rating<4.0){
+      client-=1;
+      risk+=1;
+      warnings.push("クライアント評価が4.0未満です（"+clientSignals.rating.toFixed(1)+" / 5）。レビュー内容も確認してください。");
+    }
+  }
+
+  if(clientSignals.completionRate!==null){
+    if(clientSignals.completionRate>=95){ client+=1; }
+    else if(clientSignals.completionRate<70){
+      client-=2; risk+=2;
+      warnings.push("プロジェクト完了率が"+clientSignals.completionRate+"%と低めです。途中終了の理由やレビュー確認を推奨します。");
+    }else if(clientSignals.completionRate<85){ client-=1; risk+=1; }
   }
 
   if(clientSignals.reviewCount!==null){
@@ -2881,11 +2962,31 @@ function evaluateProject(){
   const canEstimateTime=estimatedMinutes!==null;
   const canEstimateMoney=compensation.basis!=="unknown";
 
+  /* #44: 時間単価案件は制作本数が不明でも時給そのものを収益性評価に使用 */
+  if(compensation.basis==="hourly" && maxMoney>0){
+    salaryFast=maxMoney;
+    salaryNormal=maxMoney;
+    salarySlow=minMoney>0 ? minMoney : maxMoney;
+    const weekly=(()=>{ const m=text.match(/(?:約)?\s*(\d+(?:\.\d+)?)\s*時間(?:〜|～)?\s*\/\s*週/); return m?parseFloat(m[1]):null; })();
+    if(weekly){
+      totalNormal=weekly*4;
+      totalFast=totalNormal;
+      totalSlow=totalNormal;
+      numbers.push("時間単価"+formatNumber(maxMoney)+"円、週約"+weekly+"時間として月4週換算の稼働は約"+formatNumber(totalNormal)+"時間です。");
+      numbers.push("月4週換算の報酬目安は約"+formatNumber(maxMoney*totalNormal)+"円です（実際の稼働時間により変動）。");
+    }else{
+      numbers.push("時間単価"+formatNumber(maxMoney)+"円を本契約の主報酬として認識しています。");
+    }
+    efficiency = maxMoney>=2000 ? 9 : maxMoney>=1500 ? 8 : maxMoney>=1200 ? 6 : maxMoney>=1000 ? 5 : 3;
+    reward = maxMoney>=1500 ? Math.max(reward,7) : maxMoney>=1200 ? Math.max(reward,6) : reward;
+  }
+
   if(hasSalary && compensation.basis==="unknown"){
     checks.push("記載金額が月額・1件単価・案件総額のどれに当たるか確認してください。");
   }
 
   if(
+    compensation.basis!=="hourly" &&
     calculationQuantity &&
     calculationQuantity>0 &&
     maxMoney>0 &&
@@ -3009,7 +3110,7 @@ function evaluateProject(){
     }
 
   }
-  else{
+  else if(compensation.basis!=="hourly"){
 
     efficiency=Math.min(efficiency,5);
 
@@ -3032,11 +3133,11 @@ function evaluateProject(){
     revenueConditions++;
   }
 
-  if(hasQuantity){
+  if(hasQuantity || compensation.basis==="hourly"){
     revenueConditions++;
   }
 
-  if(hasDeadline){
+  if(hasDeadline || compensation.basis==="hourly"){
     revenueConditions++;
   }
 
@@ -3060,10 +3161,14 @@ function evaluateProject(){
 
   }
 
-  if(!hasQuantity){
+  if(!hasQuantity && compensation.basis!=="hourly"){
 
     checks.push(
-      "月または1案件あたりの制作件数・枚数・本数を確認してください。"
+      isDataCollectionProject
+        ? "実際の依頼件数・最低件数・上限件数を確認してください。『歓迎』件数は必須量として扱いません。"
+        : isContestProject
+          ? "チラシ・看板など、最終的に必要な成果物の点数と各サイズを確認してください。"
+          : "月または1案件あたりの制作件数・枚数・本数を確認してください。"
     );
 
   }else if(projectType.name==="ライティング" && workloadSchedule.characterCount && quantity===null){
@@ -3080,7 +3185,7 @@ function evaluateProject(){
 
   }
 
-  if(!hasWorkTime && !isSurveyProject){
+  if(!hasWorkTime && !isSurveyProject && compensation.basis!=="hourly"){
 
     checks.push(
       "1件あたりの平均作業時間・想定工数を確認してください。"
@@ -3110,6 +3215,14 @@ function evaluateProject(){
       "著作権・ポートフォリオ掲載条件を確認してください。"
     );
 
+  }
+
+  if(isDataCollectionProject){
+    checks.push("1件あたりの平均調査時間と、重複・非承認になる割合の目安を確認してください。");
+    if(/秘密保持契約|NDA/.test(text)) checks.push("NDAの契約主体・締結方法・個人情報の取扱いを確認してください。");
+  }
+  if(isContestProject && /入稿/.test(text)){
+    checks.push("印刷会社の指定、塗り足し、CMYK/RGB、解像度、入稿データ形式を確認してください。");
   }
 
   let profitAxis=
@@ -3806,7 +3919,7 @@ function evaluateProject(){
     }
   }
 
-  /* #43: 工数不明でも極端な低報酬は見送り */
+  /* #43継承: 工数不明でも極端な低報酬は見送り */
   const ultraLowReward=
     (compensation.basis==="total" && compensation.max>0 && compensation.max<300) ||
     (compensation.basis==="unit" && compensation.unitKind!=="character" && compensation.max>0 && compensation.max<50);
