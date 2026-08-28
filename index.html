@@ -491,7 +491,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator #45 | コンペ安定判定版
+Project Evaluator #45 | コンペ安定判定・再修正版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -1037,20 +1037,25 @@ function analyzeCompensation(text){
 
   /* #45: コンペ判定は採点本体から独立させて安定化 */
   const contestValues=[];
-  const isContestText=/コンペ/.test(normalized);
+  const isContestText=/(?:コンペ|提案した人|提案人数|採用された提案|提案一覧|コンペ形式)/.test(normalized);
   if(isContestText){
-    let cm=normalized.match(/契約金額\s*[（(]?\s*税抜\s*[）)]?\s*[:：]?\s*([0-9,.]+)\s*(万)?\s*円/);
+    let cm=normalized.match(/契約金額\s*[（(]?\s*(?:税抜|税別)\s*[）)]?\s*[:：]?\s*([0-9０-９,.，]+)\s*(万)?\s*円/);
     if(cm){
-      let v=parseFloat(cm[1].replace(/,/g,""));
+      const numText=cm[1]
+        .replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0))
+        .replace(/[，,]/g,"");
+      let v=parseFloat(numText);
       if(cm[2]) v*=10000;
       if(Number.isFinite(v) && v>0){
         contestValues.push(Math.round(v));
         contestValues.push(Math.round(v*1.1));
       }
     }
-    const cr=/(?:報酬|コンペ)[^。\n]{0,80}?([0-9][0-9,]{2,})\s*円/g;
+    const cr=/(?:報酬|コンペ|固定報酬制)[^。\n]{0,100}?([0-9０-９][0-9０-９,，]{2,})\s*円/g;
     while((cm=cr.exec(normalized))!==null){
-      const v=parseInt(cm[1].replace(/,/g,""),10);
+      const v=parseInt(cm[1]
+        .replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0))
+        .replace(/[，,]/g,""),10);
       if(Number.isFinite(v) && v>=300) contestValues.push(v);
     }
   }
@@ -1100,8 +1105,8 @@ function analyzeCompensation(text){
 function detectPaymentType(text){
 
   if(/(?:時間単価|時給)\s*[:：]?[^。\n]{0,20}?[\d,]+\s*円/.test(text)) return "時間単価報酬";
-  if(/コンペ/.test(text) && (
-      /契約金額\s*[（(]?\s*税抜\s*[）)]?[^\d０-９]{0,20}[\d０-９,.]+\s*(?:万)?\s*円/.test(text) ||
+  if(/(?:コンペ|提案した人|提案人数|採用された提案|提案一覧|コンペ形式)/.test(text) && (
+      /契約金額\s*[（(]?\s*(?:税抜|税別)\s*[）)]?[^\d０-９]{0,20}[\d０-９,.，]+\s*(?:万)?\s*円/.test(text) ||
       /(?:報酬|コンペ)[\s\S]{0,100}?[\d,]+\s*円/.test(text)
     )) return "コンペ報酬";
 
@@ -2215,7 +2220,11 @@ function evaluateProject(){
   const quantity=
     workloadSchedule.quantity!==null
       ? workloadSchedule.quantity
-      : extractQuantity(text);
+      : (
+          /(?:チラシ|フライヤー)/.test(text) && /(?:看板|A1)/.test(text)
+            ? 2
+            : extractQuantity(text)
+        );
 
   const moneyValues=
     compensation.max>0
