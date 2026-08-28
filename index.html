@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MINERVA LAB | 案件判定ツール #46</title>
+<title>MINERVA LAB | 案件判定ツール #47</title>
 
 <style>
 
@@ -491,7 +491,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator #46 | コンペ判定・表示整合修正版
+Project Evaluator #47 | 実行経路修正版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -2211,10 +2211,12 @@ function evaluateProject(){
   /* #46: CrowdWorksコンペの最終整合ガード
      「提案した人/提案人数」があり、デザイン成果物案件で契約金額が取れる場合は
      報酬タイプ判定の取りこぼしを最終段で補正する。 */
-  const contestSignature=/(?:提案した人|提案人数|採用された提案|コンペ)/.test(text);
-  const designContestSignature=/(?:チラシ|フライヤー|看板|ロゴ|バナー|ポスター)/.test(text);
+  const contestSignature=
+    /(?:提案した人|提案人数|採用された提案|コンペ|応募期限|提案一覧)/.test(text);
+  const designContestSignature=
+    /(?:チラシ|フライヤー|看板|ロゴ|バナー|ポスター)/.test(text);
   if(contestSignature && designContestSignature && compensation.basis==="unknown"){
-    let cm=text.match(/契約金額\s*[（(]?\s*(?:税抜|税別)\s*[）)]?\s*[:：]?\s*([0-9０-９,.，]+)\s*(万)?\s*円/);
+    let cm=text.match(/契約金額[\s\S]{0,30}?(?:税抜|税別)[\s\S]{0,30}?([0-9０-９,.，]+)\s*(万)?\s*円/);
     if(cm){
       const raw=cm[1]
         .replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0))
@@ -2226,12 +2228,32 @@ function evaluateProject(){
         compensation={
           ...compensation,
           basis:"contest",
+          label:"コンペ報酬",
           min:shown,
           max:shown,
           values:[shown],
           unitKind:"project",
           note:"コンペ報酬（税抜契約金額から税込表示額を補完）"
         };
+      }
+    } else {
+      const displayReward=text.match(/(?:報酬|固定報酬制|コンペ)[\s\S]{0,80}?([0-9０-９][0-9０-９,，]{2,})\s*円/);
+      if(displayReward){
+        const shown=parseInt(displayReward[1]
+          .replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0))
+          .replace(/[，,]/g,""),10);
+        if(Number.isFinite(shown) && shown>=300){
+          compensation={
+            ...compensation,
+            basis:"contest",
+            label:"コンペ報酬",
+            min:shown,
+            max:shown,
+            values:[shown],
+            unitKind:"project",
+            note:"コンペ報酬（CrowdWorks表示報酬から補完）"
+          };
+        }
       }
     }
   }
