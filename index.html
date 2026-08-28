@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MINERVA LAB | 案件判定ツール #45</title>
+<title>MINERVA LAB | 案件判定ツール #46</title>
 
 <style>
 
@@ -491,7 +491,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator #45 | コンペ安定判定・再修正版
+Project Evaluator #46 | コンペ判定・表示整合修正版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -2205,8 +2205,36 @@ function evaluateProject(){
   const hasWorkTime=
     explicitWorkTime!==null;
 
-  const compensation=
+  let compensation=
     analyzeCompensation(text);
+
+  /* #46: CrowdWorksコンペの最終整合ガード
+     「提案した人/提案人数」があり、デザイン成果物案件で契約金額が取れる場合は
+     報酬タイプ判定の取りこぼしを最終段で補正する。 */
+  const contestSignature=/(?:提案した人|提案人数|採用された提案|コンペ)/.test(text);
+  const designContestSignature=/(?:チラシ|フライヤー|看板|ロゴ|バナー|ポスター)/.test(text);
+  if(contestSignature && designContestSignature && compensation.basis==="unknown"){
+    let cm=text.match(/契約金額\s*[（(]?\s*(?:税抜|税別)\s*[）)]?\s*[:：]?\s*([0-9０-９,.，]+)\s*(万)?\s*円/);
+    if(cm){
+      const raw=cm[1]
+        .replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0))
+        .replace(/[，,]/g,"");
+      let taxEx=parseFloat(raw);
+      if(cm[2]) taxEx*=10000;
+      if(Number.isFinite(taxEx) && taxEx>0){
+        const shown=Math.round(taxEx*1.1);
+        compensation={
+          ...compensation,
+          basis:"contest",
+          min:shown,
+          max:shown,
+          values:[shown],
+          unitKind:"project",
+          note:"コンペ報酬（税抜契約金額から税込表示額を補完）"
+        };
+      }
+    }
+  }
 
   const paymentType=
     compensation.label;
