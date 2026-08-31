@@ -491,7 +491,7 @@ ul{
 <h1>MINERVA LAB</h1>
 
 <div class="subtitle">
-Project Evaluator v1.0 | 販売候補完成版
+Project Evaluator v1.0 | 正式販売版
 </div>
 
 <h2>案件内容を入力</h2>
@@ -979,7 +979,7 @@ function analyzeCompensation(text){
     .replace(/[￥¥]\s*([\d,.]+)/g,"$1円")
     .replace(/([\d,.]+)\s*[￥¥]/g,"$1円");
   const toYen=(num,man)=>Math.round(parseFloat(String(num).replace(/,/g,""))*(man ? 10000 : 1));
-  const itemUnitValues=[], characterUnitValues=[], monthlyValues=[], totalValues=[], testValues=[];
+  const itemUnitValues=[], characterUnitValues=[], monthlyValues=[], totalValues=[], testValues=[], bodyRewardValues=[];
   const explicitContractValues=[];
   let m;
 
@@ -1085,6 +1085,46 @@ function analyzeCompensation(text){
     }
   }
 
+  /* FINAL4: 本文の明示的な「報酬」見出しを行単位でも拾う。
+     CrowdWorks本文では「【 報酬 】」と金額が別行になることがあるため、
+     1本の正規表現だけに依存しない。概要の「固定報酬制」は対象外。 */
+  const rewardLines=normalized.replace(/<br\s*\/?\s*>/gi,"\n").split(/\r?\n/);
+  const cleanRewardLine=(line)=>String(line||"")
+    .replace(/\*+/g,"")
+    .replace(/[■□●○◇◆▶▷▼▽・]/g," ")
+    .trim();
+  for(let i=0;i<rewardLines.length;i++){
+    const rawLine=rewardLines[i];
+    const line=cleanRewardLine(rawLine);
+    if(!/報酬/.test(line)) continue;
+    if(/固定報酬制|報酬総額|案件総額|成果報酬|テスト報酬|トライアル報酬/.test(line)) continue;
+    if(/応募時|入力|記入|設定/.test(line)) continue;
+
+    /* 見出し単独、または「報酬：1,000円」のような短い明示行だけを対象にする。 */
+    const headingLike=/^(?:【\s*)?報酬(?:\s*】)?\s*[:：]?\s*(?:[0-9,]+\s*(?:万)?\s*円.*)?$/.test(line);
+    if(!headingLike) continue;
+
+    const window=[rawLine,rewardLines[i+1]||"",rewardLines[i+2]||""] .join("\n");
+    const amountMatch=window.match(/([0-9][0-9,]*)\s*(万)?\s*円/);
+    if(!amountMatch) continue;
+    const value=toYen(amountMatch[1],amountMatch[2]);
+    if(Number.isFinite(value) && value>0) bodyRewardValues.push(value);
+  }
+
+  /* インライン表記も補完: 「◆ 報酬 1,000円（税込）」など。 */
+  const bodyRewardInlineRegex=/(?:^|[\n。])[^\n。]{0,12}?報酬\s*[:：]?\s*([0-9][0-9,]*)\s*(万)?\s*円/gim;
+  while((m=bodyRewardInlineRegex.exec(normalized))!==null){
+    const matchedLine=normalized.slice(Math.max(0,m.index),bodyRewardInlineRegex.lastIndex);
+    if(/固定報酬制|報酬総額|案件総額|成果報酬|テスト報酬|トライアル報酬/.test(matchedLine)) continue;
+    if(/応募時|入力|記入|設定/.test(matchedLine)) continue;
+    const value=toYen(m[1],m[2]);
+    if(Number.isFinite(value) && value>0) bodyRewardValues.push(value);
+  }
+
+  /* 月額レンジ「月額5万円-35万円」も両端を取得 */
+  const monthlyRangeRegex=/(?:月額(?:報酬)?|月収|月\s*報酬)\s*[:：]?\s*(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円?\s*(?:〜|～|~|-|－)\s*(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
+  while((m=monthlyRangeRegex.exec(normalized))!==null){ monthlyValues.push(toYen(m[1],m[2]),toYen(m[3],m[4])); }
+
   const monthlyRegex=/(?:月額(?:報酬)?|月収|月\s*報酬)\s*[:：]?\s*(\d+(?:\.\d+)?(?:,\d{3})*)\s*(万)?\s*円/g;
   while((m=monthlyRegex.exec(normalized))!==null) monthlyValues.push(toYen(m[1],m[2]));
 
@@ -1122,10 +1162,12 @@ function analyzeCompensation(text){
   if(performanceFee){ basis="performance"; values=[]; }
   else if(hourlyValues.length){ basis="hourly"; values=hourlyValues; }
   else if(isContestText && contestValues.length){ basis="contest"; values=contestValues; }
+  /* FINAL3: 見出し付き本文報酬は、応募フォーム上の契約金額入力指定より優先する。 */
+  else if(monthlyValues.length){ basis="monthly"; values=monthlyValues; }
+  else if(bodyRewardValues.length){ basis="total"; values=bodyRewardValues; }
   else if(explicitContractValues.length){ basis="total"; values=explicitContractValues; }
   else if(itemUnitValues.length){ basis="unit"; values=itemUnitValues; unitKind="item"; }
   else if(characterUnitValues.length){ basis="unit"; values=characterUnitValues; unitKind="character"; }
-  else if(monthlyValues.length){ basis="monthly"; values=monthlyValues; }
   else if(totalValues.length){ basis="total"; values=totalValues; }
   else{
     const remaining=[...all];
@@ -1142,7 +1184,7 @@ function analyzeCompensation(text){
   let label=basis==="performance" ? "成果報酬" : basis==="hourly" ? "時間単価報酬" : basis==="contest" ? "コンペ報酬" : basis==="unit" ? (unitKind==="character" ? "文字単価報酬" : "単価報酬") : basis==="monthly" ? "月額報酬" : basis==="total" ? "案件総額" : "判定困難";
   if(testValues.length) label+="（テスト報酬は別枠で検出）";
 
-  return{basis,label,min,max,unitKind,unitValues,itemUnitValues,characterUnitValues,monthlyValues,totalValues,testValues,explicitContractValues,hourlyValues,contestValues};
+  return{basis,label,min,max,unitKind,unitValues,itemUnitValues,characterUnitValues,monthlyValues,totalValues,testValues,explicitContractValues,hourlyValues,contestValues,bodyRewardValues};
 }
 
 function detectPaymentType(text){
@@ -1412,7 +1454,6 @@ function analyzeWorkloadSchedule(text){
     {re:new RegExp("(\\d+)\\s*("+unit.slice(3,-1)+")\\s*[\\/／]\\s*月","g"), period:"month"},
     {re:new RegExp("合計\\s*(\\d+)\\s*("+unit.slice(3,-1)+")","g"), period:"total"},
     {re:new RegExp("(?:仕事量\\s*[:：]?\\s*)?全\\s*(\\d+)\\s*("+unit.slice(3,-1)+")","g"), period:"total"},
-    {re:/(?:仕事量\s*[:：]?\s*)?全\s*(\d+)\s*(問)/g, period:"total"},
     {re:/記事数\s*[:：]?\s*(\d+)\s*(記事)/g, period:"total"},
     {re:/(\d+)\s*(記事)\s*(?:作成|執筆|納品)/g, period:"total"},
     /* #38: 「まずは1本ご依頼」「初回は1本」のような初回数量 */
@@ -1762,6 +1803,22 @@ function detectProjectType(text){
       fast:null, normal:null, slow:null,
       confidence:"高", confidenceKey:"high",
       evidence:"根拠：SNSアカウントの運用・集客を仕事内容として優先",
+      score:10
+    };
+  }
+
+  /* v1.0 final: データ入力に加えてチャット・オンライン説明等を担う複合事務を優先。
+     応募条件中の「営業経験」だけでは営業案件にしない。 */
+  const compositeOfficeSignature=
+    /(?:データ入力|専用フォーム|事務作業)/.test(normalized) &&
+    /(?:チャット(?:送受信|対応)|オンライン(?:ご説明|説明|対応)|メール対応|顧客対応)/.test(normalized) &&
+    !/(?:テレアポ|新規開拓|クロージング|商談獲得)[^。\n]{0,80}(?:業務|仕事内容|お任せ)/.test(normalized);
+  if(compositeOfficeSignature){
+    return{
+      name:"事務・オンラインアシスタント",
+      fast:null, normal:null, slow:null,
+      confidence:"高", confidenceKey:"high",
+      evidence:"根拠：データ入力＋チャット・オンライン対応の複合事務を仕事内容として優先",
       score:10
     };
   }
@@ -2569,8 +2626,11 @@ function evaluateProject(){
   /* #49F: 1回限りのモニター面談は作業量1回として扱う */
   if(quantity===null && isInterviewMonitor && /(?:お一人様1回|1回まで|面談完了後)/.test(text)) quantity=1;
 
-  /* #49: アンケートの「1件単価」は1回答を1件として扱う */
-  if(quantity===null && projectType.name==="質問・アンケート" && compensation.max>0 && weeklyDaysMin===null && dailyHoursMatch===null) quantity=1;
+  /* v1.0 final: アンケートの質問数は案件数量ではない。1回答=1件として扱う。 */
+  if(projectType.name==="質問・アンケート" && compensation.max>0 && weeklyDaysMin===null && dailyHoursMatch===null) quantity=1;
+
+  /* 完成動画の尺は工数にしないが、「動画を1本仕上げる」は成果物数量1として扱う。 */
+  if(quantity===null && projectType.name==="動画編集" && /(?:動画|ショート動画)[^。\n]{0,40}?1\s*本(?:仕上げ|制作|納品)/.test(text)) quantity=1;
   if(quantity===null && voicePackageMatch) quantity=parseInt(voicePackageMatch[2],10);
 
   const moneyValues=
@@ -2589,6 +2649,41 @@ function evaluateProject(){
 
   const maxMoney=compensation.max;
   const minMoney=compensation.min;
+
+  /* v1.0 final: 報酬文脈の補足 */
+  const applicationInputMatch=text.match(/応募時[^。\n]{0,30}?[「『"']?([0-9,]+)[」』"']?[^。\n]{0,20}?(?:記入|入力)/);
+  if(applicationInputMatch){
+    numbers.push("応募時の入力指定「"+applicationInputMatch[1]+"」は報酬額とは分離して扱っています。");
+  }
+  if(projectType.name==="動画編集" && (compensation.bodyRewardValues||[]).length){
+    numbers.push("本文の明示報酬"+formatNumber(minMoney)+"円を概要の表示レンジより優先して評価しています。");
+  }
+  if(compensation.basis==="monthly"){
+    numbers.push("本文の月額報酬："+formatNumber(minMoney)+(maxMoney!==minMoney ? "〜"+formatNumber(maxMoney) : "")+"円として評価しています。");
+    if((compensation.totalValues||[]).length){
+      const ovMin=Math.min(...compensation.totalValues.filter(v=>v>0));
+      const ovMax=Math.max(...compensation.totalValues.filter(v=>v>0));
+      if(Number.isFinite(ovMin) && (ovMin!==minMoney || ovMax!==maxMoney)) warnings.push("概要欄の固定報酬表示と本文の月額報酬条件が一致しない可能性があります。本文条件を優先し、契約前に関係を確認してください。");
+    }
+  }
+  if(compensation.basis==="monthly" && /タスク量[^。\n]{0,30}(?:金額|報酬)[^。\n]{0,20}(?:変化|変動)|タスク量によって金額は変化/.test(text)){
+    numbers.push("月額報酬はタスク量によって変動する条件として認識しています。");
+    checks.push("月間タスク数、チャット対応件数、オンライン説明の回数・1回あたり時間、最低保証額を確認してください。");
+  }
+  if(projectType.name==="質問・アンケート"){
+    const q=text.match(/質問数\s*[:：]?\s*全?\s*(\d+)\s*問/);
+    if(q) numbers.push("質問数"+q[1]+"問は1案件内の設問数として扱い、案件数量には掛けていません。");
+    const taxEx=text.match(/契約金額[^。\n]{0,30}?([0-9,]+)円\s*[（(]?税別[）)]?/);
+    if(taxEx && compensation.max>0){
+      const ex=parseInt(taxEx[1].replace(/,/g,""),10);
+      if(Number.isFinite(ex) && Math.round(ex*1.1)===compensation.max){
+        numbers.push("本文"+formatNumber(ex)+"円（税別）と概要"+formatNumber(compensation.max)+"円（税込）は整合する表示として扱っています。");
+      }
+    }
+    if(/対象外[^。\n]{0,80}報酬対象外/.test(text)){
+      warnings.push("対象条件から外れた場合は報酬対象外となる記載があります。応募条件を満たすか確認してください。");
+    }
+  }
 
   const calculationQuantity=
     workloadSchedule.monthlyQuantity!==null
@@ -3734,12 +3829,17 @@ function evaluateProject(){
         checks.push("対面研修・撮影立ち会いの頻度、場所、交通費の扱いを確認してください。");
       }
     }else if(projectType.name==="事務・オンラインアシスタント"){
+      const taskVariableMonthly = compensation.basis==="monthly" && /タスク量[^。\n]{0,30}(?:金額|報酬)[^。\n]{0,20}(?:変化|変動)|タスク量によって金額は変化/.test(text);
       if(compensation.basis==="hourly"){
         checks.push("実際に報酬対象となる稼働時間の記録方法と、時給レンジの決定条件を確認してください。");
+      }else if(taskVariableMonthly){
+        checks.push("月額報酬の算定基準となるタスク数・対応件数と、最低保証額の有無を確認してください。");
+        checks.push("オンライン説明の月間回数・1回あたり時間と、チャット対応を含む想定月間稼働時間を確認してください。");
       }else{
         checks.push("報酬に対する想定月間稼働時間と、担当業務の範囲を確認してください。");
+        if(/月末|月初|繁忙期間|繁忙期/.test(text)) checks.push("月末～月初など必須稼働期間の具体的なシフト確定方法と、連絡対応が必要な時間帯を確認してください。");
+        else checks.push("連絡対応が必要な曜日・時間帯と、必須稼働時間の有無を確認してください。");
       }
-      checks.push("月末～月初など必須稼働期間の具体的なシフト確定方法と、連絡対応が必要な時間帯を確認してください。");
     }
   }
 
